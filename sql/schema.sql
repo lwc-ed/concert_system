@@ -23,29 +23,36 @@ CREATE TABLE PromoCode (
 -- 3. 演唱會表
 CREATE TABLE Concert (
     concert_id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT
-) ENGINE=InnoDB;
+    artist VARCHAR(100) NOT NULL,                    -- 藝人/團體名稱
+    title VARCHAR(255) NOT NULL,                     -- 演唱會完整標題
+    venue VARCHAR(100) NOT NULL,                     -- 場地名稱 (如：高雄巨蛋)
+    address VARCHAR(255) NOT NULL,                   -- 場地地址
+    image VARCHAR(255),                              -- 演唱會海報圖片路徑或 URL
+    sale_start DATETIME NOT NULL,                    -- 啟售開始時間
+    sale_end DATETIME NOT NULL,                      -- 售票截止時間
+    description TEXT,                                -- 活動簡介
+    notice TEXT,                                     -- 購票及入場注意事項
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- 4. 場次表 (一場演唱會有多個日期場次)
+-- 4 . 演唱會場次時間表
 CREATE TABLE ShowDate (
     show_id INT AUTO_INCREMENT PRIMARY KEY,
-    concert_id INT,
-    show_datetime DATETIME NOT NULL,
-    status ENUM('available', 'sold_out', 'ended') DEFAULT 'available',
+    concert_id INT NOT NULL,                         -- 外鍵，連結 Concert
+    show_datetime DATETIME NOT NULL,                 -- 演出日期與時間 (如：2026-07-18 17:00:00)
+    status VARCHAR(50) DEFAULT 'available',          -- 狀態：available / ended / sold_out
     FOREIGN KEY (concert_id) REFERENCES Concert(concert_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
--- 5. 座位主表 
+-- 5. 座位資料表
 CREATE TABLE Seat (
     seat_id INT AUTO_INCREMENT PRIMARY KEY,
-    show_id INT,
-    seat_number VARCHAR(20) NOT NULL,
-    price INT NOT NULL,
-    status ENUM('available', 'reserved', 'sold') DEFAULT 'available',
+    show_id INT NOT NULL,                            -- 外鍵，連結 ShowDate
+    seat_number VARCHAR(50) NOT NULL,                -- 座位號碼 (如：209區-15號)
+    price DECIMAL(10, 2) NOT NULL,                   -- 票價 (使用 DECIMAL 儲存金錢較精確)
+    status VARCHAR(50) DEFAULT 'available',          -- 座位狀態：available / reserved / sold
     FOREIGN KEY (show_id) REFERENCES ShowDate(show_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
+);
 -- 6. 訂單總表
 CREATE TABLE Orders (
     order_id INT AUTO_INCREMENT PRIMARY KEY,

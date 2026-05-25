@@ -2,8 +2,8 @@
 // 資料庫連線設定
 $host = '127.0.0.1';
 $db   = 'concert_system';
-$user = 'root';
-$pass = '你的密碼'; // 記得更新成全組統一的密碼
+$user = 'DBfinal';
+$pass = 'DB123456'; // 記得更新成全組統一的密碼
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
