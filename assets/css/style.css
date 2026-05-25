@@ -84,7 +84,8 @@ a {
 .ticket-link,
 .secondary-action,
 .disabled-action,
-.zone-action,
+.seat-zone-action,
+.show-select-action,
 .placeholder-link {
     display: inline-flex;
     align-items: center;
@@ -102,7 +103,8 @@ a {
 .login-button:hover,
 .primary-action:hover,
 .ticket-link:hover,
-.zone-action:hover,
+.seat-zone-action:hover,
+.show-select-action:hover,
 .placeholder-link:hover {
     background: var(--accent-dark);
 }
@@ -119,11 +121,15 @@ a {
 }
 
 .disabled-action,
-.zone-action.is-disabled {
+.seat-zone-action.is-disabled {
     border: 1px solid var(--line);
     background: #ece5db;
     color: var(--muted);
     cursor: not-allowed;
+}
+
+.is-hidden {
+    display: none !important;
 }
 
 .ad-carousel {
@@ -564,7 +570,8 @@ a {
 }
 
 .detail-layout,
-.ticket-zone-section,
+.show-date-section,
+.seat-zone-section,
 .notice-section {
     width: min(1180px, calc(100% - 32px));
     margin: 22px auto 0;
@@ -579,7 +586,8 @@ a {
 
 .detail-panel,
 .booking-panel,
-.ticket-zone-section,
+.show-date-section,
+.seat-zone-section,
 .notice-section {
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -588,7 +596,8 @@ a {
 }
 
 .detail-panel,
-.ticket-zone-section,
+.show-date-section,
+.seat-zone-section,
 .notice-section {
     padding: clamp(22px, 3vw, 30px);
 }
@@ -654,23 +663,81 @@ a {
     font-weight: 800;
 }
 
-.ticket-zone-section {
+.show-date-section {
     overflow: hidden;
 }
 
-.ticket-zone-section .section-heading {
+.show-date-table {
+    display: grid;
+    margin: 0 -30px -30px;
+}
+
+.show-date-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 140px;
+    gap: 12px;
+    align-items: center;
+    min-height: 62px;
+    padding: 12px 30px;
+    border-top: 1px solid var(--line);
+    background: #fff;
+}
+
+.show-date-head {
+    min-height: 46px;
+    border-top: 0;
+    background: #f0e6d8;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.show-date-row:not(.show-date-head) span {
+    color: var(--text);
+    font-weight: 850;
+    line-height: 1.35;
+}
+
+.show-select-action {
+    width: 112px;
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+.show-select-action.is-active {
+    background: var(--accent-dark);
+}
+
+.show-status-text {
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.seat-zone-section {
+    overflow: hidden;
+}
+
+.seat-zone-section .section-heading {
     display: flex;
     align-items: end;
     justify-content: space-between;
     gap: 20px;
 }
 
-.ticket-zone-table {
+.selected-show-label {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.4;
+}
+
+.seat-zone-table {
     display: grid;
     margin: 0 -30px -30px;
 }
 
-.ticket-zone-row {
+.seat-zone-row {
     display: grid;
     grid-template-columns: minmax(140px, 1fr) 140px 100px 112px;
     gap: 12px;
@@ -681,7 +748,7 @@ a {
     background: #fff;
 }
 
-.ticket-zone-head {
+.seat-zone-head {
     min-height: 46px;
     border-top: 0;
     background: #f0e6d8;
@@ -690,13 +757,13 @@ a {
     font-weight: 900;
 }
 
-.ticket-zone-row:not(.ticket-zone-head) span {
+.seat-zone-row:not(.seat-zone-head) span {
     color: var(--text);
     font-weight: 850;
     line-height: 1.35;
 }
 
-.ticket-zone-row .zone-action {
+.seat-zone-row .seat-zone-action {
     width: 100%;
     min-height: 38px;
     padding: 0 12px;
@@ -779,16 +846,22 @@ a {
         align-self: stretch;
     }
 
-    .ticket-zone-row {
+    .seat-zone-row {
         grid-template-columns: minmax(0, 1fr) 120px;
     }
 
-    .ticket-zone-row span:nth-child(3),
-    .ticket-zone-row span:nth-child(4) {
+    .show-date-row {
+        grid-template-columns: minmax(0, 1fr) 120px;
+    }
+
+    .seat-zone-row span:nth-child(3),
+    .seat-zone-row span:nth-child(4),
+    .show-date-row span:nth-child(3) {
         grid-column: auto;
     }
 
-    .ticket-zone-head {
+    .show-date-head,
+    .seat-zone-head {
         display: none;
     }
 }
@@ -835,7 +908,8 @@ a {
 
     .detail-hero,
     .detail-layout,
-    .ticket-zone-section,
+    .show-date-section,
+    .seat-zone-section,
     .notice-section {
         width: calc(100% - 20px);
     }
@@ -867,11 +941,16 @@ a {
         grid-template-columns: 1fr;
     }
 
-    .ticket-zone-table {
+    .seat-zone-table {
         margin: 0 -18px -18px;
     }
 
-    .ticket-zone-row {
+    .show-date-table {
+        margin: 0 -18px -18px;
+    }
+
+    .show-date-row,
+    .seat-zone-row {
         grid-template-columns: 1fr;
         gap: 8px;
         align-items: start;

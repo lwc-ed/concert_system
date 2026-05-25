@@ -6,30 +6,34 @@ require_once __DIR__ . '/../includes/concerts.php';
  * Database notes for future MySQL integration:
  *
  * concerts table
- * - id: concert primary key
+ * - concert_id: concert primary key
  * - artist: concert or performer name
  * - title: tour title or subtitle
- * - date: concert date
- * - time: concert start time
- * - venue: venue name
- * - address: venue address
- * - price: display price range, or calculate it from seat_zones
- * - status: ticket status, for example 開放購票 / 已售完 / 已結束
+ * - venue: venue name if all show dates share the same venue
+ * - address: venue address if all show dates share the same venue
  * - image: poster image path
  * - sale_start: ticket sale start datetime
  * - sale_end: ticket sale end datetime
  * - description: concert introduction
  * - notice: ticket notice text
+ * Do not store one Concert row per show date. Store one Concert row and many ShowDate rows.
+ * date/time should be calculated from ShowDate for list and detail pages.
  *
- * seat_zones table
- * - id: seat zone primary key
- * - concert_id: foreign key to concerts.id
- * - zone: ticket zone name
- * - price: ticket price
- * - remaining: remaining ticket quantity
+ * ShowDate table
+ * - show_id: primary key, auto increment INT
+ * - concert_id: foreign key to concerts.id, ON DELETE CASCADE
+ * - show_datetime: performance datetime, DATETIME NOT NULL
+ * - status: ENUM('available', 'sold_out', 'ended')
+ *
+ * Seat table
+ * - seat_id: primary key, auto increment INT
+ * - show_id: foreign key to ShowDate.show_id, ON DELETE CASCADE
+ * - seat_number: seat label, for example A區_12號, VARCHAR(20) NOT NULL
+ * - price: seat ticket price, INT NOT NULL
+ * - status: ENUM('available', 'reserved', 'sold')
  *
  * Future order-related tables can include:
- * - orders: id, customer_id, concert_id, seat_zone_id, quantity, total_amount, status, created_at
+ * - orders: id, customer_id, concert_id, show_id, seat_id, total_amount, status, created_at
  * - customers: id, name, email, password_hash, phone, created_at
  */
 
@@ -40,7 +44,7 @@ $concertId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
 // Future DB connection point:
 // Replace findConcertById($concertId) with a SELECT query by concerts.id,
-// then query seat_zones by concert_id and attach them to $concert['seat_zones'].
+// then query ShowDate by concert_id. Query available Seat rows by show_id after the user selects a show.
 $concert = $concertId ? findConcertById($concertId) : null;
 
 if ($concert === null) {
@@ -54,16 +58,24 @@ function h($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-$isBookable = $concert && $concert['status'] === '開放購票';
-$totalRemaining = 0;
-$detailRedirect = $concert ? rawurlencode('concert_detail.php?id=' . $concert['id']) : '';
+$showDates = $concert['show_dates'] ?? [];
+$showDateCount = count($showDates);
+$primaryShowDate = $showDates[0] ?? null;
+$hasAvailableShowDate = false;
+$totalRemaining = $concert ? countAvailableSeatsByConcertId($concert['concert_id']) : 0;
+$detailRedirect = $concert ? rawurlencode('concert_detail.php?id=' . $concert['concert_id']) : '';
 $styleVersion = filemtime(__DIR__ . '/../assets/css/style.css');
+$posterVersion = $concert ? filemtime(__DIR__ . '/../' . $concert['image']) : time();
 
 if ($concert) {
-    foreach ($concert['seat_zones'] as $seatZone) {
-        $totalRemaining += (int) $seatZone['remaining'];
+    foreach ($showDates as $showDate) {
+        if ($showDate['status'] === 'available') {
+            $hasAvailableShowDate = true;
+        }
     }
 }
+
+$isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailableShowDate);
 ?>
 <!doctype html>
 <html lang="zh-Hant">
@@ -91,7 +103,7 @@ if ($concert) {
         <?php if ($concert): ?>
             <section class="detail-hero">
                 <div class="detail-poster">
-                    <img src="../<?= h($concert['image']) ?>" alt="<?= h($concert['artist']) ?> 演唱會海報">
+                    <img src="../<?= h($concert['image']) ?>?v=<?= h($posterVersion) ?>" alt="<?= h($concert['artist']) ?> 演唱會海報">
                 </div>
 
                 <div class="detail-summary">
@@ -107,7 +119,17 @@ if ($concert) {
                     <dl class="detail-meta">
                         <div>
                             <dt>日期時間</dt>
-                            <dd><?= h($concert['date']) ?> · <?= h($concert['time']) ?></dd>
+                            <dd>
+                                <?php if ($showDateCount > 1): ?>
+                                    共 <?= h($showDateCount) ?> 場 · 首場 <?= h(showDateDateText($primaryShowDate)) ?> · <?= h(showDateTimeText($primaryShowDate)) ?>
+                                <?php else: ?>
+                                    <?php if ($primaryShowDate): ?>
+                                        <?= h(showDateDateText($primaryShowDate)) ?> · <?= h(showDateTimeText($primaryShowDate)) ?>
+                                    <?php else: ?>
+                                        尚未公布
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </dd>
                         </div>
                         <div>
                             <dt>演出地點</dt>
@@ -126,7 +148,7 @@ if ($concert) {
                     <div class="detail-actions">
                         <a class="secondary-action" href="../index.php#concerts">返回列表</a>
                         <?php if ($isBookable && $totalRemaining > 0): ?>
-                            <a class="primary-action" href="#ticket-zones">選擇票區</a>
+                            <a class="primary-action" href="#show-dates">選擇場次</a>
                         <?php else: ?>
                             <span class="disabled-action"><?= h($concert['status']) ?></span>
                         <?php endif; ?>
@@ -165,41 +187,75 @@ if ($concert) {
                 </aside>
             </section>
 
-            <section class="ticket-zone-section" id="ticket-zones">
-                <div class="section-heading">
-                    <p>Ticket Zones</p>
-                    <h2>票區與剩餘票數</h2>
-                </div>
-
-                <div class="ticket-zone-table" role="table" aria-label="票區與票價">
-                    <div class="ticket-zone-row ticket-zone-head" role="row">
-                        <span role="columnheader">票區</span>
-                        <span role="columnheader">票價</span>
-                        <span role="columnheader">剩餘</span>
-                        <span role="columnheader">操作</span>
+            <?php if ($showDateCount > 0): ?>
+                <section class="show-date-section" id="show-dates" aria-label="場次資訊">
+                    <div class="section-heading">
+                        <p>Show Dates</p>
+                        <h2>場次資訊</h2>
                     </div>
 
-                    <?php foreach ($concert['seat_zones'] as $seatZone): ?>
-                        <?php $canSelectZone = $isBookable && (int) $seatZone['remaining'] > 0; ?>
-                        <div class="ticket-zone-row" role="row">
-                            <span role="cell"><?= h($seatZone['zone']) ?></span>
-                            <span role="cell"><?= h(formatTicketPrice($seatZone['price'])) ?></span>
-                            <span role="cell"><?= h($seatZone['remaining']) ?> 張</span>
-                            <span role="cell">
-                                <?php if ($canSelectZone): ?>
-                                    <?php
-                                    // Future order point:
-                                    // Send concert_id and seat_zone_id to a booking page or POST handler,
-                                    // then create an order row after checking login and remaining ticket quantity.
-                                    ?>
-                                    <a class="zone-action" href="login.php?redirect=<?= h($detailRedirect) ?>">訂票</a>
-                                <?php else: ?>
-                                    <span class="zone-action is-disabled">不可購買</span>
-                                <?php endif; ?>
-                            </span>
+                    <div class="show-date-table" role="table" aria-label="演唱會場次">
+                        <div class="show-date-row show-date-head" role="row">
+                            <span role="columnheader">開演時間</span>
+                            <span role="columnheader">狀態</span>
                         </div>
-                    <?php endforeach; ?>
+
+                        <?php foreach ($showDates as $showDate): ?>
+                            <div class="show-date-row" role="row">
+                                <span role="cell"><?= h(showDateDateText($showDate)) ?> · <?= h(showDateTimeText($showDate)) ?></span>
+                                <span role="cell">
+                                    <?php if ($showDate['status'] === 'available'): ?>
+                                        <button class="show-select-action" type="button" data-show-id="<?= h($showDate['show_id']) ?>" data-show-label="<?= h(showDateDateText($showDate) . ' · ' . showDateTimeText($showDate)) ?>">
+                                            可購買
+                                        </button>
+                                    <?php else: ?>
+                                        <span class="show-status-text"><?= h(showDateStatusText($showDate['status'])) ?></span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <section class="seat-zone-section is-hidden" id="seat-zones" data-seat-zone-section>
+                <div class="section-heading">
+                    <p>Seat Zones</p>
+                    <h2>座位區與剩餘票數</h2>
+                    <span class="selected-show-label" data-selected-show-label></span>
                 </div>
+
+                <?php foreach ($showDates as $showDate): ?>
+                    <?php $seatZones = getSeatZoneSummariesByShowId($showDate['show_id']); ?>
+                    <div class="seat-zone-table is-hidden" data-seat-zones-for="<?= h($showDate['show_id']) ?>" role="table" aria-label="座位區與票價">
+                        <div class="seat-zone-row seat-zone-head" role="row">
+                            <span role="columnheader">座位區</span>
+                            <span role="columnheader">票價</span>
+                            <span role="columnheader">剩餘</span>
+                            <span role="columnheader">操作</span>
+                        </div>
+
+                        <?php foreach ($seatZones as $seatZone): ?>
+                            <div class="seat-zone-row" role="row">
+                                <span role="cell"><?= h($seatZone['zone']) ?></span>
+                                <span role="cell"><?= h(formatTicketPrice($seatZone['price'])) ?></span>
+                                <span role="cell"><?= h($seatZone['remaining']) ?> 張</span>
+                                <span role="cell">
+                                    <?php if ((int) $seatZone['remaining'] > 0): ?>
+                                        <?php
+                                        // Future order point:
+                                        // Send concert_id, selected show_id, and seat_id to a booking page or POST handler.
+                                        // The current zone button is a summary; the booking page should list/select real Seat rows.
+                                        ?>
+                                        <a class="seat-zone-action" href="login.php?redirect=<?= h($detailRedirect) ?>">訂票</a>
+                                    <?php else: ?>
+                                        <span class="seat-zone-action is-disabled">售完</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endforeach; ?>
             </section>
 
             <section class="notice-section">
@@ -208,7 +264,7 @@ if ($concert) {
                     <h2>訂票提醒</h2>
                 </div>
                 <p><?= h($concert['notice']) ?></p>
-                <p>資料庫串接時建議將演唱會主資料、票區、訂單與會員資料拆成不同資料表，頁面上方只需要用目前的 concert id 查詢即可。</p>
+                <p>資料庫串接時建議將演唱會主資料、場次、座位、訂單與會員資料拆成不同資料表。使用者選定場次後，再用 show_id 查詢可購買座位。</p>
             </section>
         <?php else: ?>
             <div class="placeholder-card">
@@ -223,5 +279,30 @@ if ($concert) {
         <span>ConcertNow Database Final Project</span>
         <span>Concert detail prototype</span>
     </footer>
+    <script>
+        const showButtons = Array.from(document.querySelectorAll(".show-select-action"));
+        const seatZoneSection = document.querySelector("[data-seat-zone-section]");
+        const selectedShowLabel = document.querySelector("[data-selected-show-label]");
+        const seatZoneTables = Array.from(document.querySelectorAll("[data-seat-zones-for]"));
+
+        showButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                showButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+                seatZoneTables.forEach((table) => {
+                    table.classList.toggle("is-hidden", table.dataset.seatZonesFor !== button.dataset.showId);
+                });
+
+                if (seatZoneSection) {
+                    seatZoneSection.classList.remove("is-hidden");
+                }
+
+                if (selectedShowLabel) {
+                    selectedShowLabel.textContent = `已選場次：${button.dataset.showLabel}`;
+                }
+
+                seatZoneSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+    </script>
 </body>
 </html>
