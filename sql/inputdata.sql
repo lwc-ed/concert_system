@@ -18,8 +18,38 @@ ALTER TABLE Seat AUTO_INCREMENT = 1;
 ALTER TABLE ShowDate AUTO_INCREMENT = 1;
 ALTER TABLE Concert AUTO_INCREMENT = 1;
 
+INSERT INTO `User`
+(username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+VALUES
+(
+    'test',
+    '測試帳號',
+    '2000-01-01 00:00:00',
+    '0912345678',
+    'A123456789',
+    'test@example.com',
+    'Taiwan',
+    '12345678',
+    'manager'
+);
+
+INSERT INTO `User`
+(username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+VALUES
+(
+    'lwcissohandsome',
+    '李瑋晨很帥',
+    '2000-01-01 00:00:01',
+    '0987-654-321',
+    'A130022039',
+    'lwcissohandsome@gmail.com',
+    'Taiwan',
+    '11111111',
+    'customer'
+);
+
 INSERT INTO Concert
-    (concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice)
+    (concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
 VALUES
     (
         1,
