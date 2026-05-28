@@ -7,6 +7,7 @@ USE concert_system;
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM Ticket;
 DELETE FROM Orders;
+DELETE FROM PromoCode;
 DELETE FROM Seat;
 DELETE FROM ShowDate;
 DELETE FROM Concert;
@@ -14,6 +15,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 ALTER TABLE Ticket AUTO_INCREMENT = 1;
 ALTER TABLE Orders AUTO_INCREMENT = 1;
+ALTER TABLE PromoCode AUTO_INCREMENT = 1;
 ALTER TABLE Seat AUTO_INCREMENT = 1;
 ALTER TABLE ShowDate AUTO_INCREMENT = 1;
 ALTER TABLE Concert AUTO_INCREMENT = 1;
@@ -47,6 +49,14 @@ VALUES
     '11111111',
     'customer'
 );
+
+INSERT INTO PromoCode
+    (code_name, discount_amount, usage_limit, starts_at, expires_at, is_active)
+VALUES
+    ('WELCOME100', 100, 50, '2026-01-01 00:00:00', '2027-12-31 23:59:59', TRUE),
+    ('VIP500', 500, 10, '2026-05-01 00:00:00', '2026-12-31 23:59:59', TRUE),
+    ('EXPIRED200', 200, 20, '2025-01-01 00:00:00', '2025-12-31 23:59:59', TRUE),
+    ('OFFLINE300', 300, NULL, '2026-01-01 00:00:00', '2027-12-31 23:59:59', FALSE);
 
 INSERT INTO Concert
     (concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)

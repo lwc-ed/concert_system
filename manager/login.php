@@ -37,7 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$account, $account]);
         $manager = $stmt->fetch();
 
-        if (!$manager || !password_verify($password, $manager['password'])) {
+        $passwordMatches = $manager
+            && (password_verify($password, $manager['password']) || hash_equals((string) $manager['password'], $password));
+
+        if (!$passwordMatches) {
             $errors[] = '管理員帳號或密碼錯誤。';
         } else {
             session_regenerate_id(true);
