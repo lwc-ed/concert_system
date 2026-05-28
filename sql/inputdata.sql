@@ -30,7 +30,7 @@ VALUES
     'test@example.com',
     'Taiwan',
     '12345678',
-    'customer'
+    'manager'
 );
 
 INSERT INTO `User`

@@ -114,7 +114,8 @@ if ($pdo === null) {
 
         <nav class="main-nav" aria-label="主要導覽">
             <a href="../index.php#concerts">近期演唱會</a>
-            <a class="login-button" href="../index.php">回首頁</a>
+            <a href="../index.php">回首頁</a>
+            <a class="login-button" href="logout.php">登出</a>
         </nav>
     </header>
 
