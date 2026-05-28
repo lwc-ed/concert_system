@@ -297,5 +297,79 @@ CALL append_mock_seats(302, '二樓座席1', 9000, 10, 'sold');
 CALL append_mock_seats(302, '二樓座席2', 9000, 110, 'available');
 CALL append_mock_seats(302, '二樓座席2', 9000, 9, 'sold');
 
+-- Mock order data for manager Order Management / Order Detail / Sales Report.
+-- These rows depend on the users, promo codes, shows and seats created above.
+INSERT INTO Orders
+    (order_id, user_id, show_id, promo_id, total_price, status, created_at)
+VALUES
+    (1, 2, 102, 1, 8500, 'paid', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (2, 2, 301, NULL, 72000, 'pending_payment', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
+    (3, 2, 302, 2, 71500, 'pending_payment', DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
+    (4, 2, 301, NULL, 100000, 'cancelled', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO Ticket
+    (order_id, seat_id, real_name, id_number)
+VALUES
+    (
+        1,
+        (SELECT seat_id FROM Seat WHERE show_id = 102 AND seat_number = '幸福搖滾區1_1號' LIMIT 1),
+        '李瑋晨',
+        'A130022039'
+    ),
+    (
+        1,
+        (SELECT seat_id FROM Seat WHERE show_id = 102 AND seat_number = '幸福孟區1_1號' LIMIT 1),
+        '王小明',
+        'B123456789'
+    ),
+    (
+        2,
+        (SELECT seat_id FROM Seat WHERE show_id = 301 AND seat_number = '搖滾站區1_13號' LIMIT 1),
+        '李瑋晨',
+        'A130022039'
+    ),
+    (
+        2,
+        (SELECT seat_id FROM Seat WHERE show_id = 301 AND seat_number = '搖滾站區1_14號' LIMIT 1),
+        '陳小華',
+        'C223456789'
+    ),
+    (
+        3,
+        (SELECT seat_id FROM Seat WHERE show_id = 302 AND seat_number = '搖滾站區1_11號' LIMIT 1),
+        '李瑋晨',
+        'A130022039'
+    ),
+    (
+        3,
+        (SELECT seat_id FROM Seat WHERE show_id = 302 AND seat_number = '搖滾站區1_12號' LIMIT 1),
+        '林小美',
+        'D323456789'
+    ),
+    (
+        4,
+        (SELECT seat_id FROM Seat WHERE show_id = 301 AND seat_number = '至尊包廂1' LIMIT 1),
+        '取消測試',
+        'E423456789'
+    );
+
+UPDATE Seat
+SET status = 'sold'
+WHERE seat_id IN (
+    SELECT seat_id FROM Ticket WHERE order_id = 1
+);
+
+UPDATE Seat
+SET status = 'reserved'
+WHERE seat_id IN (
+    SELECT seat_id FROM Ticket WHERE order_id IN (2, 3)
+);
+
+UPDATE Seat
+SET status = 'available'
+WHERE seat_id IN (
+    SELECT seat_id FROM Ticket WHERE order_id = 4
+);
+
 DROP PROCEDURE IF EXISTS append_mock_seats;
 DROP PROCEDURE IF EXISTS append_mock_seat_unit;
