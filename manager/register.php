@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
             ]);
 
             $_SESSION['manager_notice'] = '管理員註冊成功，請登入。';
-            header('Location: login.php');
+            header('Location: ../customer/login.php');
             exit;
         }
     }
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
             </div>
         <?php elseif ($managerExists): ?>
             <div class="auth-alert">系統已存在管理員，請直接登入。</div>
-            <a class="placeholder-link" href="login.php">前往登入</a>
+            <a class="placeholder-link" href="../customer/login.php">前往登入</a>
         <?php else: ?>
             <?php if ($errors): ?>
                 <div class="auth-alert">
@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
                 </label>
                 <button class="placeholder-link" type="submit">建立管理員</button>
             </form>
-            <p class="auth-switch">已有帳號？<a href="login.php">登入管理後台</a></p>
+            <p class="auth-switch">已有帳號？<a href="../customer/login.php">登入管理後台</a></p>
         <?php endif; ?>
     </main>
 </body>

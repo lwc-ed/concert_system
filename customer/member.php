@@ -182,7 +182,7 @@ if ($pdo === null) {
                                 <div class="member-order-head">
                                     <div>
                                         <p>訂單 #<?= h($order['order_id']) ?></p>
-                                        <h3><?= h($order['artist'] ?? '演唱會資料已移除') ?></h3>
+                                        <h3><?= h($order['title'] ?? '演唱會資料已移除') ?></h3>
                                     </div>
                                     <span class="member-status"><?= h(orderStatusText($order['status'])) ?></span>
                                 </div>
@@ -190,7 +190,7 @@ if ($pdo === null) {
                                 <dl class="member-order-info">
                                     <div>
                                         <dt>活動名稱</dt>
-                                        <dd><?= h($order['title'] ?? '-') ?></dd>
+                                        <dd><?= h($order['artist'] ?? '-') ?></dd>
                                     </div>
                                     <div>
                                         <dt>演出時間</dt>

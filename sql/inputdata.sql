@@ -4,6 +4,8 @@ USE concert_system;
 -- If teammates already imported an older inputdata.sql, run this file again to refresh
 -- Concert / ShowDate / Seat data to match the current frontend prototype.
 -- Existing Ticket and Orders rows are cleared because they reference old Seat rows.
+USE concert_system;
+
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM Ticket;
 DELETE FROM Orders;
@@ -11,6 +13,14 @@ DELETE FROM PromoCode;
 DELETE FROM Seat;
 DELETE FROM ShowDate;
 DELETE FROM Concert;
+
+TRUNCATE TABLE Ticket;
+TRUNCATE TABLE Orders;
+TRUNCATE TABLE Seat;
+TRUNCATE TABLE ShowDate;
+TRUNCATE TABLE Concert;
+TRUNCATE TABLE User;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 ALTER TABLE Ticket AUTO_INCREMENT = 1;
@@ -63,8 +73,8 @@ INSERT INTO Concert
 VALUES
     (
         1,
+        '崴崴孟孟 x æspa',
         '史詩級跨界合作 <幸福崴孟演唱會 x æspa>',
-        '2026 Taipei Arena Tour',
         '台北大巨蛋',
         '台北市信義區忠孝東路四段515號',
         'assets/images/concert-1.png',
@@ -75,8 +85,8 @@ VALUES
     ),
     (
         2,
-        '婉晴粉絲見面會',
-        '全台巡迴中',
+        '婉晴',
+        '婉晴粉絲見面會・全台巡迴中',
         '台北小巨蛋',
         '台北市松山區南京東路四段2號',
         'assets/images/concert-2.png',
@@ -87,8 +97,8 @@ VALUES
     ),
     (
         3,
-        '史上最屌演唱會',
-        'Final Call',
+        '第八組的帥哥們',
+        '史上最屌演唱會・Final Call',
         '百老匯',
         'New York, NY, United States',
         'assets/images/concert-3.png',
