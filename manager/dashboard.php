@@ -84,7 +84,7 @@ requireManager();
 </head>
 <body>
     <header class="site-header">
-        <a class="brand" href="dashboard.php" aria-label="ConcertNow 管理後台">
+        <a class="brand" href="/concert_system/manager/dashboard.php" aria-label="ConcertNow 管理後台">
             <span class="brand-mark">CN</span>
             <span>ConcertNow 管理後台</span>
         </a>
@@ -92,6 +92,9 @@ requireManager();
         <nav class="main-nav" aria-label="管理功能">
             <a href="/concert_system/manager/concerts.php">演唱會管理</a>
             <a href="/concert_system/manager/shows.php">場次管理</a>
+            <a href="/concert_system/manager/promocodes.php">優惠碼管理</a>
+            <a href="change_password.php">修改密碼</a>
+            <a class="login-button" href="logout.php">登出</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
             <a class="login-button" href="/concert_system/manager/logout.php">登出</a>
         </nav>
@@ -106,6 +109,15 @@ requireManager();
             <a class="secondary-action" href="../index.php">查看前台</a>
         </div>
 
+        <section class="placeholder-card manager-panel">
+            <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
+            <p>你已登入管理員帳號，可以管理演唱會、場次、優惠碼與後續訂單資料。</p>
+            <div class="manager-actions">
+                <a class="placeholder-link" href="/concert_system/manager/concerts.php">演唱會管理 Concert Management</a>
+                <a class="placeholder-link" href="/concert_system/manager/shows.php">場次管理 ShowDate Management</a>
+                <a class="placeholder-link" href="/concert_system/manager/promocodes.php">優惠碼管理 Promo Code Management</a>
+                <a class="placeholder-link" href="change_password.php">修改密碼</a>
+                <a class="secondary-action" href="../index.php">查看前台</a>
         <section class="placeholder-card dashboard-panel">
             <div class="dashboard-layout">
                 <div class="dashboard-welcome">

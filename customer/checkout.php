@@ -1,0 +1,422 @@
+<?php
+session_start();
+require_once __DIR__ . '/../includes/db_config.php';
+
+function h($value)
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+function formatMoney($value)
+{
+    return 'NT$' . number_format((int) $value);
+}
+
+function checkoutDateTimeText($value)
+{
+    $timestamp = strtotime((string) $value);
+
+    return $timestamp ? date('Y/m/d H:i', $timestamp) : (string) $value;
+}
+
+function selectedSeatNumbersFromRequest()
+{
+    $raw = trim((string) ($_GET['seats'] ?? ''));
+
+    if ($raw === '') {
+        return [];
+    }
+
+    $items = array_map('trim', explode(',', $raw));
+    $items = array_filter($items, function ($item) {
+        return $item !== '';
+    });
+
+    return array_values(array_unique($items));
+}
+
+function fetchSelectedSeatsByNumbers($pdo, $showId, $seatNumbers)
+{
+    if (!$seatNumbers) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($seatNumbers), '?'));
+    $sql = "SELECT
+                s.seat_id,
+                s.show_id,
+                s.seat_number,
+                s.price,
+                s.status,
+                sd.show_datetime,
+                c.artist,
+                c.title,
+                c.venue
+            FROM Seat s
+            INNER JOIN ShowDate sd ON sd.show_id = s.show_id
+            INNER JOIN Concert c ON c.concert_id = sd.concert_id
+            WHERE s.show_id = ?
+              AND s.seat_number IN ($placeholders)
+              AND s.status = 'available'
+            ORDER BY s.seat_number";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array_merge([$showId], $seatNumbers));
+
+    return $stmt->fetchAll();
+}
+
+function fetchFallbackSeatByZone($pdo, $showId, $zone)
+{
+    if ($zone === '') {
+        return [];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT
+            s.seat_id,
+            s.show_id,
+            s.seat_number,
+            s.price,
+            s.status,
+            sd.show_datetime,
+            c.artist,
+            c.title,
+            c.venue
+         FROM Seat s
+         INNER JOIN ShowDate sd ON sd.show_id = s.show_id
+         INNER JOIN Concert c ON c.concert_id = sd.concert_id
+         WHERE s.show_id = ?
+           AND SUBSTRING_INDEX(s.seat_number, '_', 1) = ?
+           AND s.status = 'available'
+         ORDER BY s.seat_id
+         LIMIT 1"
+    );
+    $stmt->execute([$showId, $zone]);
+
+    return $stmt->fetchAll();
+}
+
+function fetchSelectedSeatsByIdsForUpdate($pdo, $showId, $seatIds)
+{
+    $placeholders = implode(',', array_fill(0, count($seatIds), '?'));
+    $sql = "SELECT seat_id, show_id, seat_number, price, status
+            FROM Seat
+            WHERE show_id = ?
+              AND seat_id IN ($placeholders)
+              AND status = 'available'
+            FOR UPDATE";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array_merge([$showId], $seatIds));
+
+    return $stmt->fetchAll();
+}
+
+function validatePromoCode($pdo, $code, $subtotal)
+{
+    $code = strtoupper(trim((string) $code));
+
+    if ($code === '') {
+        return [null, 0, null];
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT promo_id, code_name, discount_amount, usage_limit, starts_at, expires_at, is_active
+         FROM PromoCode
+         WHERE code_name = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$code]);
+    $promo = $stmt->fetch();
+
+    if (!$promo || (int) $promo['is_active'] !== 1) {
+        return [null, 0, '優惠碼不存在或尚未啟用。'];
+    }
+
+    $now = time();
+
+    if (!empty($promo['starts_at']) && strtotime($promo['starts_at']) > $now) {
+        return [null, 0, '優惠碼尚未開始使用。'];
+    }
+
+    if (!empty($promo['expires_at']) && strtotime($promo['expires_at']) < $now) {
+        return [null, 0, '優惠碼已過期。'];
+    }
+
+    if ($promo['usage_limit'] !== null) {
+        $usageStmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM Orders
+             WHERE promo_id = ?
+               AND status IN ('pending_payment', 'paid')"
+        );
+        $usageStmt->execute([$promo['promo_id']]);
+        $usedCount = (int) $usageStmt->fetchColumn();
+
+        if ($usedCount >= (int) $promo['usage_limit']) {
+            return [null, 0, '優惠碼已達使用次數上限。'];
+        }
+    }
+
+    $discount = min((int) $promo['discount_amount'], (int) $subtotal);
+
+    return [$promo, $discount, null];
+}
+
+if (!isset($_SESSION['customer_id'])) {
+    $redirect = 'checkout.php';
+
+    if (!empty($_SERVER['QUERY_STRING'])) {
+        $redirect .= '?' . $_SERVER['QUERY_STRING'];
+    }
+
+    header('Location: login.php?redirect=' . rawurlencode($redirect));
+    exit;
+}
+
+$stylePath = __DIR__ . '/../assets/css/style.css';
+$styleVersion = file_exists($stylePath) ? filemtime($stylePath) : time();
+$errors = [];
+$notice = '';
+$selectedSeats = [];
+$promo = null;
+$discount = 0;
+$promoCode = strtoupper(trim((string) ($_POST['promo_code'] ?? $_GET['promo_code'] ?? '')));
+$showId = filter_input(INPUT_GET, 'show_id', FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1],
+]);
+$zone = trim((string) ($_GET['zone'] ?? ''));
+$customerId = (int) $_SESSION['customer_id'];
+$customer = null;
+
+if ($pdo === null) {
+    $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
+} elseif (!$showId) {
+    $errors[] = '缺少場次資訊，請重新選擇場次與座位。';
+} else {
+    try {
+        $customerStmt = $pdo->prepare(
+            'SELECT user_id, username, real_name, id_number
+             FROM `User`
+             WHERE user_id = ?
+               AND role = "customer"
+             LIMIT 1'
+        );
+        $customerStmt->execute([$customerId]);
+        $customer = $customerStmt->fetch();
+
+        if (!$customer) {
+            unset($_SESSION['customer_id'], $_SESSION['customer_username']);
+            header('Location: login.php');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $seatIds = array_map('intval', $_POST['seat_ids'] ?? []);
+            $seatIds = array_values(array_filter(array_unique($seatIds)));
+
+            if (count($seatIds) < 1 || count($seatIds) > 2) {
+                $errors[] = '每筆訂單需選擇 1 到 2 張票。';
+            } else {
+                $pdo->beginTransaction();
+
+                try {
+                    $lockedSeats = fetchSelectedSeatsByIdsForUpdate($pdo, $showId, $seatIds);
+
+                    if (count($lockedSeats) !== count($seatIds)) {
+                        throw new RuntimeException('部分座位已被購買，請重新選位。');
+                    }
+
+                    $subtotal = array_sum(array_map(function ($seat) {
+                        return (int) $seat['price'];
+                    }, $lockedSeats));
+
+                    [$promo, $discount, $promoError] = validatePromoCode($pdo, $promoCode, $subtotal);
+
+                    if ($promoError !== null) {
+                        throw new RuntimeException($promoError);
+                    }
+
+                    $totalPrice = max(0, $subtotal - $discount);
+                    $orderStmt = $pdo->prepare(
+                        "INSERT INTO Orders (user_id, show_id, promo_id, total_price, status)
+                         VALUES (?, ?, ?, ?, 'paid')"
+                    );
+                    $orderStmt->execute([
+                        $customerId,
+                        $showId,
+                        $promo['promo_id'] ?? null,
+                        $totalPrice,
+                    ]);
+                    $orderId = (int) $pdo->lastInsertId();
+
+                    $ticketStmt = $pdo->prepare(
+                        'INSERT INTO Ticket (order_id, seat_id, real_name, id_number)
+                         VALUES (?, ?, ?, ?)'
+                    );
+                    $seatUpdateStmt = $pdo->prepare("UPDATE Seat SET status = 'sold' WHERE seat_id = ?");
+
+                    foreach ($lockedSeats as $seat) {
+                        $ticketStmt->execute([
+                            $orderId,
+                            $seat['seat_id'],
+                            $customer['real_name'] ?: $customer['username'],
+                            $customer['id_number'] ?: 'UNKNOWN',
+                        ]);
+                        $seatUpdateStmt->execute([$seat['seat_id']]);
+                    }
+
+                    $pdo->commit();
+                    header('Location: member.php');
+                    exit;
+                } catch (Throwable $exception) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+
+                    $errors[] = $exception->getMessage();
+                }
+            }
+        }
+
+        $seatNumbers = selectedSeatNumbersFromRequest();
+        $selectedSeats = fetchSelectedSeatsByNumbers($pdo, $showId, $seatNumbers);
+
+        if (!$selectedSeats && $zone !== '') {
+            $selectedSeats = fetchFallbackSeatByZone($pdo, $showId, $zone);
+        }
+
+        if (!$selectedSeats) {
+            $errors[] = '找不到可購買的座位，請重新選位。';
+        } elseif (count($selectedSeats) > 2) {
+            $errors[] = '每筆訂單最多可購買 2 張票。';
+            $selectedSeats = array_slice($selectedSeats, 0, 2);
+        }
+
+        $subtotal = array_sum(array_map(function ($seat) {
+            return (int) $seat['price'];
+        }, $selectedSeats));
+
+        [$promo, $discount, $promoError] = validatePromoCode($pdo, $promoCode, $subtotal);
+
+        if ($promoError !== null && $promoCode !== '') {
+            $errors[] = $promoError;
+        } elseif ($promo !== null) {
+            $notice = '優惠碼已套用：' . $promo['code_name'];
+        }
+    } catch (PDOException $exception) {
+        $errors[] = '讀取訂票資料失敗：' . $exception->getMessage();
+    }
+}
+
+$subtotal = array_sum(array_map(function ($seat) {
+    return (int) $seat['price'];
+}, $selectedSeats));
+$totalPrice = max(0, $subtotal - $discount);
+$firstSeat = $selectedSeats[0] ?? null;
+?>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>確認訂單 | ConcertNow</title>
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?= h($styleVersion) ?>">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="../index.php" aria-label="ConcertNow 首頁">
+            <span class="brand-mark">CN</span>
+            <span>ConcertNow</span>
+        </a>
+
+        <nav class="main-nav" aria-label="主選單">
+            <a href="../index.php#concerts">演唱會列表</a>
+            <a href="member.php">會員中心</a>
+        </nav>
+    </header>
+
+    <main class="member-main">
+        <section class="member-hero" aria-labelledby="checkout-title">
+            <div>
+                <p class="member-kicker">Checkout</p>
+                <h1 id="checkout-title">確認訂單</h1>
+                <span>確認座位與優惠碼後即可建立訂單。</span>
+            </div>
+        </section>
+
+        <section class="member-panel">
+            <?php if ($notice !== ''): ?>
+                <p class="auth-success"><?= h($notice) ?></p>
+            <?php endif; ?>
+
+            <?php if ($errors): ?>
+                <div class="auth-alert">
+                    <?php foreach ($errors as $error): ?>
+                        <p><?= h($error) ?></p>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($firstSeat): ?>
+                <div class="member-section-title">
+                    <p>Order Preview</p>
+                    <h2><?= h($firstSeat['artist']) ?></h2>
+                </div>
+
+                <dl class="member-order-info">
+                    <div>
+                        <dt>活動名稱</dt>
+                        <dd><?= h($firstSeat['title']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>場館</dt>
+                        <dd><?= h($firstSeat['venue']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>演出時間</dt>
+                        <dd><?= h(checkoutDateTimeText($firstSeat['show_datetime'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>座位</dt>
+                        <dd><?= h(implode('、', array_column($selectedSeats, 'seat_number'))) ?></dd>
+                    </div>
+                    <div>
+                        <dt>原價</dt>
+                        <dd><?= h(formatMoney($subtotal)) ?></dd>
+                    </div>
+                    <div>
+                        <dt>折扣</dt>
+                        <dd>-<?= h(formatMoney($discount)) ?></dd>
+                    </div>
+                    <div>
+                        <dt>應付金額</dt>
+                        <dd><?= h(formatMoney($totalPrice)) ?></dd>
+                    </div>
+                </dl>
+
+                <form class="auth-form" method="get" action="checkout.php">
+                    <input type="hidden" name="show_id" value="<?= h($showId) ?>">
+                    <input type="hidden" name="seats" value="<?= h(implode(',', array_column($selectedSeats, 'seat_number'))) ?>">
+                    <?php if ($zone !== ''): ?>
+                        <input type="hidden" name="zone" value="<?= h($zone) ?>">
+                    <?php endif; ?>
+
+                    <label>
+                        <span>優惠碼</span>
+                        <input type="text" name="promo_code" value="<?= h($promoCode) ?>" placeholder="WELCOME100">
+                    </label>
+                    <button class="secondary-action" type="submit">套用優惠碼</button>
+                </form>
+
+                <form class="auth-form" method="post" action="checkout.php?show_id=<?= h($showId) ?>&seats=<?= h(rawurlencode(implode(',', array_column($selectedSeats, 'seat_number')))) ?>&promo_code=<?= h(rawurlencode($promoCode)) ?>">
+                    <?php foreach ($selectedSeats as $seat): ?>
+                        <input type="hidden" name="seat_ids[]" value="<?= h($seat['seat_id']) ?>">
+                    <?php endforeach; ?>
+                    <input type="hidden" name="promo_code" value="<?= h($promoCode) ?>">
+                    <button class="placeholder-link" type="submit" <?= $errors ? 'disabled' : '' ?>>建立訂單</button>
+                </form>
+            <?php endif; ?>
+        </section>
+    </main>
+</body>
+</html>

@@ -303,7 +303,8 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                                             data-price="<?= h($seatZone['price']) ?>"
                                             data-remaining="<?= h($seatZone['remaining']) ?>"
                                             data-unit="<?= h($seatZone['unit']) ?>"
-                                            data-book-href="login.php?redirect=<?= h($detailRedirect) ?>"
+                                            data-checkout-href="checkout.php?show_id=<?= h($showDate['show_id']) ?>&zone=<?= h(rawurlencode($seatZone['zone'])) ?>"
+                                            data-login-required="<?= $isLoggedIn ? '0' : '1' ?>"
                                         >訂票</button>
                                     <?php else: ?>
                                         <span class="seat-zone-action is-disabled">售完</span>
@@ -482,6 +483,8 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
         const modalMapGrid = document.querySelector("[data-modal-map-grid]");
         const modalSelectedCount = document.querySelector("[data-modal-selected-count]");
         const modalBookLink = document.getElementById("zone-modal-book-link");
+        let modalCheckoutBase = "#";
+        let modalLoginRequired = false;
 
         function updateModalSelection() {
             const selected = Array.from(
@@ -491,6 +494,21 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                 modalSelectedCount.textContent = selected.length > 0
                     ? `已選取 ${selected.length} 張`
                     : "尚未選位";
+            }
+
+            if (modalBookLink) {
+                if (selected.length === 0) {
+                    modalBookLink.href = "#";
+                    modalBookLink.classList.add("is-disabled");
+                    return;
+                }
+
+                const seatNumbers = selected.map((item) => item.dataset.seatNumber).join(",");
+                const checkoutUrl = `${modalCheckoutBase}&seats=${encodeURIComponent(seatNumbers)}`;
+                modalBookLink.href = modalLoginRequired
+                    ? `login.php?redirect=${encodeURIComponent(checkoutUrl)}`
+                    : checkoutUrl;
+                modalBookLink.classList.remove("is-disabled");
             }
         }
 
@@ -600,14 +618,16 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
             });
         }
 
-        function openZoneModal(showId, zone, price, remaining, unit, bookHref) {
+        function openZoneModal(showId, zone, price, remaining, unit, checkoutHref, loginRequired) {
             modalZoneName.textContent = zone;
             modalZoneInfo.textContent = `NT$${Number(price).toLocaleString()} · 剩餘 ${remaining} ${unit}`;
             if (modalSelectedCount) modalSelectedCount.textContent = "尚未選位";
+            modalCheckoutBase = checkoutHref;
+            modalLoginRequired = loginRequired === "1";
 
             renderModalMap(showId, zone);
 
-            if (modalBookLink) modalBookLink.href = bookHref;
+            updateModalSelection();
             zoneModal.classList.remove("is-hidden");
             document.body.style.overflow = "hidden";
 
@@ -630,9 +650,17 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                     btn.dataset.price,
                     btn.dataset.remaining,
                     btn.dataset.unit,
-                    btn.dataset.bookHref
+                    btn.dataset.checkoutHref,
+                    btn.dataset.loginRequired
                 );
             });
+        });
+
+        modalBookLink?.addEventListener("click", (event) => {
+            if (modalBookLink.getAttribute("href") === "#") {
+                event.preventDefault();
+                alert("請先選擇座位");
+            }
         });
 
         document.querySelectorAll(".zone-modal-close, .zone-modal-cancel").forEach((el) => {

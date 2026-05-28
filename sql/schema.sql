@@ -34,7 +34,12 @@ CREATE TABLE PromoCode (
     promo_id INT AUTO_INCREMENT PRIMARY KEY,
     code_name VARCHAR(50) NOT NULL UNIQUE, -- 例如: 'NCT2026'
     discount_amount INT NOT NULL,          -- 折扣金額，例如: 200
-    is_active BOOLEAN DEFAULT TRUE         -- 是否啟用
+    usage_limit INT NULL,                  -- 最多可使用次數，NULL 代表不限次數
+    starts_at DATETIME NULL,               -- 開始可使用時間
+    expires_at DATETIME NULL,              -- 到期時間
+    is_active BOOLEAN DEFAULT TRUE,        -- 是否啟用
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- 3. 演唱會表
