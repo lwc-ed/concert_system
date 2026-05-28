@@ -92,6 +92,7 @@ requireManager();
             <a href="/concert_system/manager/shows.php">場次管理</a>
             <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/promocodes.php">優惠碼管理</a>
+            <a href="/concert_system/manager/orders.php">訂單管理</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
             <a class="login-button" href="/concert_system/manager/logout.php">登出</a>
         </nav>
@@ -110,7 +111,7 @@ requireManager();
             <div class="dashboard-layout">
                 <div class="dashboard-welcome">
                     <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
-                    <p>你已登入管理員帳號。可從這裡進入演唱會、場次、座位票價、優惠碼與帳號安全管理。</p>
+                    <p>你已登入管理員帳號。可從這裡進入演唱會、場次、座位票價、優惠碼與訂單管理。</p>
                 </div>
 
                 <div class="dashboard-grid">
@@ -166,21 +167,21 @@ requireManager();
 
                     <article class="dashboard-card">
                         <div>
-                            <h3>帳號安全</h3>
-                            <p>管理員可更新自己的登入密碼。</p>
+                            <h3>訂單管理</h3>
+                            <p>查看所有訂單、購買者、演唱會、場次、金額與付款狀態。</p>
                         </div>
                         <div class="dashboard-actions">
-                            <a class="placeholder-link" href="/concert_system/manager/change_password.php">修改密碼</a>
+                            <a class="placeholder-link" href="/concert_system/manager/orders.php">進入管理</a>
                         </div>
                     </article>
 
                     <article class="dashboard-card">
                         <div>
-                            <h3>前台預覽</h3>
-                            <p>回到前台確認首頁與顧客瀏覽流程。</p>
+                            <h3>帳號安全</h3>
+                            <p>管理員可更新自己的登入密碼。</p>
                         </div>
                         <div class="dashboard-actions">
-                            <a class="secondary-action" href="../index.php">查看前台</a>
+                            <a class="placeholder-link" href="/concert_system/manager/change_password.php">修改密碼</a>
                         </div>
                     </article>
                 </div>
