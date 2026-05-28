@@ -13,6 +13,7 @@ function textLength($value) {
 $stylePath = __DIR__ . '/../assets/css/style.css';
 $styleVersion = file_exists($stylePath) ? filemtime($stylePath) : time();
 $registerError = null;
+$today = date('Y-m-d');
 
 if (isset($_SESSION['customer_id'])) {
     header('Location: member.php');
@@ -22,17 +23,32 @@ if (isset($_SESSION['customer_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
+    $realName = trim($_POST['real_name'] ?? '');
+    $birthDate = trim($_POST['birth_date'] ?? '');
+    $phoneNum = trim($_POST['phone_num'] ?? '');
+    $idNumber = strtoupper(trim($_POST['id_number'] ?? ''));
+    $userAddress = trim($_POST['user_address'] ?? '');
     $password = (string) ($_POST['password'] ?? '');
     $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
     if ($pdo === null) {
         $registerError = '目前無法連線到資料庫，請確認 MAMP / MySQL 已啟動，且 includes/db_config.php 設定正確。';
-    } elseif ($username === '' || $email === '' || $password === '' || $confirmPassword === '') {
+    } elseif ($username === '' || $email === '' || $realName === '' || $birthDate === '' || $phoneNum === '' || $idNumber === '' || $password === '' || $confirmPassword === '') {
         $registerError = '請完整填寫註冊資料。';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $registerError = '請輸入有效的 Email。';
     } elseif (textLength($username) < 3 || textLength($username) > 50) {
         $registerError = '帳號長度需為 3 到 50 個字。';
+    } elseif (textLength($realName) > 50) {
+        $registerError = '真實姓名不可超過 50 個字。';
+    } elseif (strtotime($birthDate) === false || strtotime($birthDate) > strtotime($today)) {
+        $registerError = '生日不可填寫未來日期。';
+    } elseif (textLength($phoneNum) > 20) {
+        $registerError = '電話號碼不可超過 20 個字。';
+    } elseif (textLength($idNumber) > 20) {
+        $registerError = '身分證字號不可超過 20 個字。';
+    } elseif (textLength($userAddress) > 255) {
+        $registerError = '地址不可超過 255 個字。';
     } elseif (textLength($password) < 6) {
         $registerError = '密碼至少需要 6 個字。';
     } elseif ($password !== $confirmPassword) {
@@ -42,24 +58,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $checkStatement = $pdo->prepare(
                 'SELECT user_id
                  FROM `User`
-                 WHERE username = :username OR email = :email
+                 WHERE username = :username OR email = :email OR id_number = :id_number
                  LIMIT 1'
             );
             $checkStatement->execute([
                 'username' => $username,
                 'email' => $email,
+                'id_number' => $idNumber,
             ]);
 
             if ($checkStatement->fetch()) {
-                $registerError = '此帳號或 Email 已被使用。';
+                $registerError = '此帳號、Email 或身分證字號已被使用。';
             } else {
                 $insertStatement = $pdo->prepare(
-                    'INSERT INTO `User` (username, email, password, role)
-                     VALUES (:username, :email, :password, "customer")'
+                    'INSERT INTO `User`
+                     (username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+                     VALUES
+                     (:username, :real_name, :birth_date, :phone_num, :id_number, :email, :user_address, :password, "customer")'
                 );
                 $insertStatement->execute([
                     'username' => $username,
+                    'real_name' => $realName,
+                    'birth_date' => $birthDate,
+                    'phone_num' => $phoneNum,
+                    'id_number' => $idNumber,
                     'email' => $email,
+                    'user_address' => $userAddress !== '' ? $userAddress : null,
                     'password' => password_hash($password, PASSWORD_DEFAULT),
                 ]);
 
@@ -71,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (PDOException $exception) {
             if ($exception->getCode() === '23000') {
-                $registerError = '此帳號或 Email 已被使用。';
+                $registerError = '此帳號、Email 或身分證字號已被使用。';
             } else {
                 $registerError = '註冊失敗：' . $exception->getMessage();
             }
@@ -118,6 +142,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <label for="email">Email</label>
                 <input id="email" name="email" type="email" placeholder="請輸入 Email" autocomplete="email" value="<?= h($_POST['email'] ?? '') ?>" required>
+
+                <label for="real_name">真實姓名</label>
+                <input id="real_name" name="real_name" type="text" placeholder="請輸入真實姓名" value="<?= h($_POST['real_name'] ?? '') ?>" maxlength="50" required>
+
+                <label for="birth_date">生日</label>
+                <input id="birth_date" name="birth_date" type="date" value="<?= h($_POST['birth_date'] ?? '') ?>" max="<?= h($today) ?>" required>
+
+                <label for="phone_num">電話號碼</label>
+                <input id="phone_num" name="phone_num" type="tel" placeholder="請輸入電話號碼" autocomplete="tel" value="<?= h($_POST['phone_num'] ?? '') ?>" maxlength="20" required>
+
+                <label for="id_number">身分證字號</label>
+                <input id="id_number" name="id_number" type="text" placeholder="請輸入身分證字號或護照號碼" value="<?= h($_POST['id_number'] ?? '') ?>" maxlength="20" required>
+
+                <label for="user_address">地址</label>
+                <input id="user_address" name="user_address" type="text" placeholder="可留空" autocomplete="street-address" value="<?= h($_POST['user_address'] ?? '') ?>" maxlength="255">
 
                 <label for="password">密碼</label>
                 <input id="password" name="password" type="password" placeholder="至少 6 個字" autocomplete="new-password" minlength="6" required>

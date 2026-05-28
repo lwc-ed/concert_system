@@ -61,7 +61,7 @@ if ($pdo === null) {
 } else {
     try {
         $memberStatement = $pdo->prepare(
-            'SELECT user_id, username, real_name, birth_date, phone_num, id_number, email, user_address
+            'SELECT username, real_name, birth_date, phone_num, id_number, email, user_address
              FROM `User`
              WHERE user_id = :user_id
              LIMIT 1'
@@ -168,20 +168,20 @@ if ($pdo === null) {
                         <dd><?= h($member['real_name']) ?></dd>
                     </div>
                     <div>
-                        <dt>出生日期</dt>
-                        <dd><?= h(memberDateText($member['birth_date'])) ?></dd>
+                        <dt>真實姓名</dt>
+                        <dd><?= h($member['real_name']) ?></dd>
                     </div>
                     <div>
-                        <dt>電話</dt>
+                        <dt>生日</dt>
+                        <dd><?= h(memberDateTimeText($member['birth_date'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>電話號碼</dt>
                         <dd><?= h($member['phone_num']) ?></dd>
                     </div>
                     <div>
                         <dt>身分證字號</dt>
                         <dd><?= h($member['id_number']) ?></dd>
-                    </div>
-                    <div>
-                        <dt>Email</dt>
-                        <dd><?= h($member['email']) ?></dd>
                     </div>
                     <div>
                         <dt>地址</dt>
