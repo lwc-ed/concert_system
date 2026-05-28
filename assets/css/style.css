@@ -692,21 +692,6 @@ a {
     background: #fff;
 }
 
-.manager-dashboard {
-    margin-top: 34px;
-}
-
-.manager-panel {
-    width: 100%;
-}
-
-.manager-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 12px;
-}
-
 .member-info-grid dt,
 .member-order-info dt {
     color: var(--muted);

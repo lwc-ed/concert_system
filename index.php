@@ -46,12 +46,12 @@ $styleVersion = filemtime(__DIR__ . '/assets/css/style.css');
                     <?php $adImageVersion = filemtime(__DIR__ . '/' . $ad['image']); ?>
                     <article class="carousel-slide <?= $index === 0 ? 'is-active' : '' ?>" data-slide="<?= $index ?>">
                         <div class="poster-frame">
-                            <img src="<?= htmlspecialchars($ad['image']) ?>?v=<?= htmlspecialchars((string) $adImageVersion) ?>" alt="<?= htmlspecialchars($ad['artist']) ?> 演唱會廣告">
+                            <img src="<?= htmlspecialchars($ad['image']) ?>?v=<?= htmlspecialchars((string) $adImageVersion) ?>" alt="<?= htmlspecialchars($ad['title']) ?> 演唱會廣告">
                         </div>
                         <div class="slide-overlay">
                             <p class="slide-kicker">Upcoming Concert</p>
-                            <h1><?= htmlspecialchars($ad['artist']) ?></h1>
-                            <p><?= htmlspecialchars($ad['title']) ?></p>
+                            <h1><?= htmlspecialchars($ad['title']) ?></h1>
+                            <p><?= htmlspecialchars($ad['artist']) ?></p>
                             <div class="slide-meta">
                                 <span><?= htmlspecialchars(concertScheduleText($ad)) ?></span>
                                 <span><?= htmlspecialchars($ad['venue']) ?></span>
@@ -82,8 +82,8 @@ $styleVersion = filemtime(__DIR__ . '/assets/css/style.css');
                 <?php foreach ($concerts as $concert): ?>
                     <article class="ticket-card">
                         <div class="ticket-status"><?= htmlspecialchars($concert['status']) ?></div>
-                        <h3><?= htmlspecialchars($concert['artist']) ?></h3>
-                        <p class="ticket-title"><?= htmlspecialchars($concert['title']) ?></p>
+                        <h3><?= htmlspecialchars($concert['title']) ?></h3>
+                        <p class="ticket-title"><?= htmlspecialchars($concert['artist']) ?></p>
 
                         <dl class="ticket-info">
                             <div>

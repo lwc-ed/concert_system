@@ -104,7 +104,7 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= $concert ? h($concert['artist']) . ' | ConcertNow' : '演唱會詳情 | ConcertNow' ?></title>
+    <title><?= $concert ? h($concert['title']) . ' | ConcertNow' : '演唱會詳情 | ConcertNow' ?></title>
     <link rel="stylesheet" href="../assets/css/style.css?v=<?= h($styleVersion) ?>">
 </head>
 <body>
@@ -124,18 +124,18 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
         <?php if ($concert): ?>
             <section class="detail-hero">
                 <div class="detail-poster">
-                    <img src="../<?= h($concert['image']) ?>?v=<?= h($posterVersion) ?>" alt="<?= h($concert['artist']) ?> 演唱會海報">
+                    <img src="../<?= h($concert['image']) ?>?v=<?= h($posterVersion) ?>" alt="<?= h($concert['title']) ?> 演唱會海報">
                 </div>
 
                 <div class="detail-summary">
                     <div class="detail-title-row">
                         <div>
                             <p class="detail-kicker">Concert Detail</p>
-                            <h1><?= h($concert['artist']) ?></h1>
+                            <h1><?= h($concert['title']) ?></h1>
                         </div>
                         <span class="detail-status-badge"><?= h($concert['status']) ?></span>
                     </div>
-                    <p class="detail-subtitle"><?= h($concert['title']) ?></p>
+                    <p class="detail-subtitle"><?= h($concert['artist']) ?></p>
 
                     <dl class="detail-meta">
                         <div>
