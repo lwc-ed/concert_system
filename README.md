@@ -22,6 +22,11 @@
 http://localhost:8888/concert_system/index.php
 ```
 
+資料庫地址：
+```text
+http://localhost:8888/phpMyAdmin5/index.php?route=/database/structure&db=concert_system
+```
+
 如果 MAMP 的 Apache port 設成 `80`，則使用：
 
 ```text

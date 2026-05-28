@@ -1,17 +1,52 @@
 <?php
 
+require_once __DIR__ . '/db_config.php';
+
 /**
- * Temporary normalized data source.
+ * Normalized data source.
  *
- * The mock data below mirrors the future database tables:
+ * The public helper functions below are the page-facing data API. They first try
+ * to read from MySQL tables and fall back to mock arrays when local DB settings
+ * are not ready yet.
+ *
+ * The data mirrors these database tables:
  * - Concert(concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice)
  * - ShowDate(show_id, concert_id, show_datetime, status)
  * - Seat(seat_id, show_id, seat_number, price, status)
- *
- * When MySQL is ready, replace the table functions with SELECT queries and keep
- * the public helper functions. The PHP pages should not need structural changes.
  */
+function getDatabaseConnection() {
+    global $pdo;
+
+    return $pdo instanceof PDO ? $pdo : null;
+}
+
+function fetchDatabaseRows($sql, $params = []) {
+    $connection = getDatabaseConnection();
+
+    if ($connection === null) {
+        return null;
+    }
+
+    try {
+        $statement = $connection->prepare($sql);
+        $statement->execute($params);
+        return $statement->fetchAll();
+    } catch (PDOException $exception) {
+        return null;
+    }
+}
+
 function getConcertTable() {
+    $rows = fetchDatabaseRows(
+        'SELECT concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice
+         FROM Concert
+         ORDER BY concert_id'
+    );
+
+    if ($rows !== null) {
+        return array_map('normalizeConcertRow', $rows);
+    }
+
     return [
         [
             'concert_id' => 1,
@@ -53,6 +88,16 @@ function getConcertTable() {
 }
 
 function getShowDateTable() {
+    $rows = fetchDatabaseRows(
+        'SELECT show_id, concert_id, show_datetime, status
+         FROM ShowDate
+         ORDER BY show_datetime, show_id'
+    );
+
+    if ($rows !== null) {
+        return array_map('normalizeShowDateRow', $rows);
+    }
+
     return [
         ['show_id' => 101, 'concert_id' => 1, 'show_datetime' => '2026-06-28 19:30:00', 'status' => 'sold_out'],
         ['show_id' => 102, 'concert_id' => 1, 'show_datetime' => '2026-06-29 19:30:00', 'status' => 'available'],
@@ -65,51 +110,168 @@ function getShowDateTable() {
 }
 
 function getSeatTable() {
+    $rows = fetchDatabaseRows(
+        'SELECT seat_id, show_id, seat_number, price, status
+         FROM Seat
+         ORDER BY show_id, seat_id'
+    );
+
+    if ($rows !== null) {
+        return array_map('normalizeSeatRow', $rows);
+    }
+
     $seats = [];
     $nextSeatId = 1;
 
-    appendSeats($seats, $nextSeatId, 101, '幸福搖滾區', 5800, 12, 'sold');
-    appendSeats($seats, $nextSeatId, 101, '幸福崴區', 4200, 80, 'sold');
-    appendSeats($seats, $nextSeatId, 101, '幸福孟區', 2800, 120, 'sold');
-    appendSeats($seats, $nextSeatId, 101, '幸福崴孟區', 1800, 160, 'sold');
-    appendSeats($seats, $nextSeatId, 102, '幸福搖滾區', 5800, 12, 'sold');
-    appendSeats($seats, $nextSeatId, 102, '幸福崴區', 4200, 80, 'sold');
-    appendSeats($seats, $nextSeatId, 102, '幸福孟區', 2800, 120, 'available');
-    appendSeats($seats, $nextSeatId, 102, '幸福崴孟區', 1800, 160, 'available');
+    foreach ([101 => 'sold', 102 => 'sold'] as $showId => $status) {
+        appendSeats($seats, $nextSeatId, $showId, '幸福搖滾區1', 5800, 6, $status);
+        appendSeats($seats, $nextSeatId, $showId, '幸福搖滾區2', 5800, 6, $status);
+        appendSeats($seats, $nextSeatId, $showId, '幸福崴區1', 4200, 20, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '幸福崴區2', 4200, 20, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '幸福崴區3', 4200, 20, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '幸福崴區4', 4200, 20, 'sold');
+    }
 
-    appendSeats($seats, $nextSeatId, 201, '特典區', 500, 30, 'sold');
-    appendSeats($seats, $nextSeatId, 201, '一般區', 300, 120, 'sold');
-    appendSeats($seats, $nextSeatId, 201, '學生區', 1, 50, 'sold');
-    appendSeats($seats, $nextSeatId, 202, '特典區', 500, 30, 'sold');
-    appendSeats($seats, $nextSeatId, 202, '一般區', 300, 120, 'sold');
-    appendSeats($seats, $nextSeatId, 202, '學生區', 1, 50, 'sold');
-    appendSeats($seats, $nextSeatId, 203, '特典區', 500, 30, 'sold');
-    appendSeats($seats, $nextSeatId, 203, '一般區', 300, 120, 'sold');
-    appendSeats($seats, $nextSeatId, 203, '學生區', 1, 50, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福孟區1', 2800, 30, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福孟區2', 2800, 30, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福孟區3', 2800, 30, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福孟區4', 2800, 30, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福崴孟區1', 1800, 40, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福崴孟區2', 1800, 40, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福崴孟區3', 1800, 40, 'sold');
+    appendSeats($seats, $nextSeatId, 101, '幸福崴孟區4', 1800, 40, 'sold');
+    appendSeats($seats, $nextSeatId, 102, '幸福孟區1', 2800, 30, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福孟區2', 2800, 30, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福孟區3', 2800, 30, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福孟區4', 2800, 30, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福崴孟區1', 1800, 40, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福崴孟區2', 1800, 40, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福崴孟區3', 1800, 40, 'available');
+    appendSeats($seats, $nextSeatId, 102, '幸福崴孟區4', 1800, 40, 'available');
 
-    appendSeats($seats, $nextSeatId, 301, '至尊包廂', 100000, 8, 'available');
-    appendSeats($seats, $nextSeatId, 301, '搖滾站區', 36000, 42, 'available');
-    appendSeats($seats, $nextSeatId, 301, '一樓座席', 18000, 120, 'available');
-    appendSeats($seats, $nextSeatId, 301, '二樓座席', 9000, 260, 'available');
-    appendSeats($seats, $nextSeatId, 302, '至尊包廂', 100000, 6, 'available');
-    appendSeats($seats, $nextSeatId, 302, '搖滾站區', 36000, 35, 'available');
-    appendSeats($seats, $nextSeatId, 302, '一樓座席', 18000, 110, 'available');
-    appendSeats($seats, $nextSeatId, 302, '二樓座席', 9000, 239, 'available');
+    foreach ([201, 202, 203] as $showId) {
+        appendSeats($seats, $nextSeatId, $showId, '特典區1', 500, 15, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '特典區2', 500, 15, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區1', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區2', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區3', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區4', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區5', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區6', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區7', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區8', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區9', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '一般區10', 300, 12, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區1', 1, 9, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區2', 1, 9, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區3', 1, 8, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區4', 1, 8, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區5', 1, 8, 'sold');
+        appendSeats($seats, $nextSeatId, $showId, '學生區6', 1, 8, 'sold');
+    }
+
+    appendSeatUnit($seats, $nextSeatId, 301, '至尊包廂1', 100000, 'available');
+    appendSeatUnit($seats, $nextSeatId, 301, '至尊包廂2', 100000, 'available');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區1', 36000, 12, 'available');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區1', 36000, 2, 'reserved');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區2', 36000, 12, 'available');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區2', 36000, 2, 'reserved');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區3', 36000, 12, 'available');
+    appendSeats($seats, $nextSeatId, 301, '搖滾站區3', 36000, 2, 'sold');
+    appendSeats($seats, $nextSeatId, 301, '一樓座席1', 18000, 56, 'available');
+    appendSeats($seats, $nextSeatId, 301, '一樓座席1', 18000, 4, 'sold');
+    appendSeats($seats, $nextSeatId, 301, '一樓座席2', 18000, 56, 'available');
+    appendSeats($seats, $nextSeatId, 301, '一樓座席2', 18000, 4, 'sold');
+    appendSeats($seats, $nextSeatId, 301, '二樓座席1', 9000, 122, 'available');
+    appendSeats($seats, $nextSeatId, 301, '二樓座席1', 9000, 8, 'reserved');
+    appendSeats($seats, $nextSeatId, 301, '二樓座席2', 9000, 123, 'available');
+    appendSeats($seats, $nextSeatId, 301, '二樓座席2', 9000, 7, 'reserved');
+    appendSeatUnit($seats, $nextSeatId, 302, '至尊包廂1', 100000, 'available');
+    appendSeatUnit($seats, $nextSeatId, 302, '至尊包廂2', 100000, 'reserved');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區1', 36000, 10, 'available');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區1', 36000, 2, 'sold');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區2', 36000, 10, 'available');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區2', 36000, 2, 'sold');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區3', 36000, 10, 'available');
+    appendSeats($seats, $nextSeatId, 302, '搖滾站區3', 36000, 1, 'sold');
+    appendSeats($seats, $nextSeatId, 302, '一樓座席1', 18000, 50, 'available');
+    appendSeats($seats, $nextSeatId, 302, '一樓座席1', 18000, 5, 'reserved');
+    appendSeats($seats, $nextSeatId, 302, '一樓座席2', 18000, 50, 'available');
+    appendSeats($seats, $nextSeatId, 302, '一樓座席2', 18000, 5, 'reserved');
+    appendSeats($seats, $nextSeatId, 302, '二樓座席1', 9000, 110, 'available');
+    appendSeats($seats, $nextSeatId, 302, '二樓座席1', 9000, 10, 'sold');
+    appendSeats($seats, $nextSeatId, 302, '二樓座席2', 9000, 110, 'available');
+    appendSeats($seats, $nextSeatId, 302, '二樓座席2', 9000, 9, 'sold');
 
     return $seats;
 }
 
+function normalizeConcertRow($row) {
+    $row['concert_id'] = (int) $row['concert_id'];
+    $row['sale_start'] = formatDatabaseDateTimeForDisplay($row['sale_start']);
+    $row['sale_end'] = formatDatabaseDateTimeForDisplay($row['sale_end']);
+
+    return $row;
+}
+
+function normalizeShowDateRow($row) {
+    $row['show_id'] = (int) $row['show_id'];
+    $row['concert_id'] = (int) $row['concert_id'];
+
+    return $row;
+}
+
+function normalizeSeatRow($row) {
+    $row['seat_id'] = (int) $row['seat_id'];
+    $row['show_id'] = (int) $row['show_id'];
+    $row['price'] = (int) $row['price'];
+
+    return $row;
+}
+
+function formatDatabaseDateTimeForDisplay($value) {
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    try {
+        $dateTime = new DateTime($value);
+        return $dateTime->format('Y.m.d H:i');
+    } catch (Exception $exception) {
+        return $value;
+    }
+}
+
 function appendSeats(&$seats, &$nextSeatId, $showId, $zone, $price, $quantity, $status) {
+    $existingZoneSeatCount = 0;
+
+    foreach ($seats as $seat) {
+        if ((int) $seat['show_id'] === (int) $showId && seatZoneFromSeatNumber($seat['seat_number']) === $zone) {
+            $existingZoneSeatCount++;
+        }
+    }
+
     for ($seatIndex = 1; $seatIndex <= $quantity; $seatIndex++) {
         $seats[] = [
             'seat_id' => $nextSeatId,
             'show_id' => $showId,
-            'seat_number' => $zone . '_' . $seatIndex . '號',
+            'seat_number' => $zone . '_' . ($existingZoneSeatCount + $seatIndex) . '號',
             'price' => $price,
             'status' => $status,
         ];
         $nextSeatId++;
     }
+}
+
+function appendSeatUnit(&$seats, &$nextSeatId, $showId, $seatNumber, $price, $status) {
+    $seats[] = [
+        'seat_id' => $nextSeatId,
+        'show_id' => $showId,
+        'seat_number' => $seatNumber,
+        'price' => $price,
+        'status' => $status,
+    ];
+    $nextSeatId++;
 }
 
 function getConcerts() {
@@ -167,6 +329,64 @@ function getSeatsByShowId($showId) {
     return $seats;
 }
 
+function getSeatMapLayout($concertId) {
+    $layouts = [
+        1 => [
+            ['label' => '幸福崴區1', 'zone' => '幸福崴區1', 'row' => 1, 'col' => 2, 'colspan' => 1],
+            ['label' => '幸福搖滾區1', 'zone' => '幸福搖滾區1', 'row' => 1, 'col' => 3, 'colspan' => 2],
+            ['label' => '幸福孟區1', 'zone' => '幸福孟區1', 'row' => 1, 'col' => 5, 'colspan' => 1],
+            ['label' => '幸福崴區2', 'zone' => '幸福崴區2', 'row' => 2, 'col' => 2, 'colspan' => 1],
+            ['label' => '幸福搖滾區2', 'zone' => '幸福搖滾區2', 'row' => 2, 'col' => 3, 'colspan' => 2],
+            ['label' => '幸福孟區2', 'zone' => '幸福孟區2', 'row' => 2, 'col' => 5, 'colspan' => 1],
+            ['label' => '幸福崴區3', 'zone' => '幸福崴區3', 'row' => 3, 'col' => 2, 'colspan' => 1],
+            ['label' => '幸福孟區3', 'zone' => '幸福孟區3', 'row' => 3, 'col' => 5, 'colspan' => 1],
+            ['label' => '幸福崴區4', 'zone' => '幸福崴區4', 'row' => 4, 'col' => 2, 'colspan' => 1],
+            ['label' => '幸福孟區4', 'zone' => '幸福孟區4', 'row' => 4, 'col' => 5, 'colspan' => 1],
+            ['label' => '幸福崴孟區1', 'zone' => '幸福崴孟區1', 'row' => 5, 'col' => 1, 'colspan' => 2],
+            ['label' => '幸福崴孟區2', 'zone' => '幸福崴孟區2', 'row' => 5, 'col' => 3, 'colspan' => 1],
+            ['label' => '幸福崴孟區3', 'zone' => '幸福崴孟區3', 'row' => 5, 'col' => 4, 'colspan' => 1],
+            ['label' => '幸福崴孟區4', 'zone' => '幸福崴孟區4', 'row' => 5, 'col' => 5, 'colspan' => 2],
+        ],
+        2 => [
+            ['label' => '一般區1', 'zone' => '一般區1', 'row' => 1, 'col' => 2, 'colspan' => 1],
+            ['label' => '特典區1', 'zone' => '特典區1', 'row' => 1, 'col' => 3, 'colspan' => 2],
+            ['label' => '一般區2', 'zone' => '一般區2', 'row' => 1, 'col' => 5, 'colspan' => 1],
+            ['label' => '一般區3', 'zone' => '一般區3', 'row' => 2, 'col' => 2, 'colspan' => 1],
+            ['label' => '特典區2', 'zone' => '特典區2', 'row' => 2, 'col' => 3, 'colspan' => 2],
+            ['label' => '一般區4', 'zone' => '一般區4', 'row' => 2, 'col' => 5, 'colspan' => 1],
+            ['label' => '一般區5', 'zone' => '一般區5', 'row' => 3, 'col' => 2, 'colspan' => 1],
+            ['label' => '一般區6', 'zone' => '一般區6', 'row' => 3, 'col' => 3, 'colspan' => 2],
+            ['label' => '一般區7', 'zone' => '一般區7', 'row' => 3, 'col' => 5, 'colspan' => 1],
+            ['label' => '一般區8', 'zone' => '一般區8', 'row' => 4, 'col' => 2, 'colspan' => 1],
+            ['label' => '一般區9', 'zone' => '一般區9', 'row' => 4, 'col' => 3, 'colspan' => 2],
+            ['label' => '一般區10', 'zone' => '一般區10', 'row' => 4, 'col' => 5, 'colspan' => 1],
+            ['label' => '學生區1', 'zone' => '學生區1', 'row' => 5, 'col' => 1, 'colspan' => 1],
+            ['label' => '學生區2', 'zone' => '學生區2', 'row' => 5, 'col' => 2, 'colspan' => 1],
+            ['label' => '學生區3', 'zone' => '學生區3', 'row' => 5, 'col' => 3, 'colspan' => 1],
+            ['label' => '學生區4', 'zone' => '學生區4', 'row' => 5, 'col' => 4, 'colspan' => 1],
+            ['label' => '學生區5', 'zone' => '學生區5', 'row' => 5, 'col' => 5, 'colspan' => 1],
+            ['label' => '學生區6', 'zone' => '學生區6', 'row' => 5, 'col' => 6, 'colspan' => 1],
+        ],
+        3 => [
+            ['label' => '至尊包廂1', 'zone' => '至尊包廂1', 'row' => 1, 'col' => 1, 'colspan' => 2],
+            ['label' => '至尊包廂2', 'zone' => '至尊包廂2', 'row' => 1, 'col' => 5, 'colspan' => 2],
+            ['label' => '搖滾站區1', 'zone' => '搖滾站區1', 'row' => 2, 'col' => 2, 'colspan' => 1],
+            ['label' => '搖滾站區2', 'zone' => '搖滾站區2', 'row' => 2, 'col' => 3, 'colspan' => 2],
+            ['label' => '搖滾站區3', 'zone' => '搖滾站區3', 'row' => 2, 'col' => 5, 'colspan' => 1],
+            ['label' => '一樓座席1', 'zone' => '一樓座席1', 'row' => 3, 'col' => 2, 'colspan' => 1],
+            ['label' => '一樓座席1', 'zone' => '一樓座席1', 'row' => 3, 'col' => 5, 'colspan' => 1],
+            ['label' => '一樓座席2', 'zone' => '一樓座席2', 'row' => 4, 'col' => 3, 'colspan' => 1],
+            ['label' => '一樓座席2', 'zone' => '一樓座席2', 'row' => 4, 'col' => 4, 'colspan' => 1],
+            ['label' => '二樓座席1', 'zone' => '二樓座席1', 'row' => 5, 'col' => 2, 'colspan' => 1],
+            ['label' => '二樓座席1', 'zone' => '二樓座席1', 'row' => 5, 'col' => 5, 'colspan' => 1],
+            ['label' => '二樓座席2', 'zone' => '二樓座席2', 'row' => 6, 'col' => 3, 'colspan' => 1],
+            ['label' => '二樓座席2', 'zone' => '二樓座席2', 'row' => 6, 'col' => 4, 'colspan' => 1],
+        ],
+    ];
+
+    return $layouts[(int) $concertId] ?? [];
+}
+
 function getSeatZoneSummariesByShowId($showId) {
     $summaries = [];
 
@@ -179,6 +399,7 @@ function getSeatZoneSummariesByShowId($showId) {
                 'zone' => $zone,
                 'price' => (int) $seat['price'],
                 'remaining' => 0,
+                'unit' => isPrivateBoxZone($zone) ? '間' : '張',
             ];
         }
 
@@ -194,6 +415,10 @@ function seatZoneFromSeatNumber($seatNumber) {
     $parts = explode('_', $seatNumber, 2);
 
     return $parts[0];
+}
+
+function isPrivateBoxZone($zone) {
+    return strpos($zone, '至尊包廂') === 0;
 }
 
 function countAvailableSeatsByConcertId($concertId) {
