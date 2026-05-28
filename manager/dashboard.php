@@ -11,43 +11,23 @@ requireManager();
     <title>管理後台 | ConcertNow</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        .manager-dashboard {
-            margin-top: 34px;
-        }
-
-        .dashboard-panel {
-            width: 100%;
-            max-width: none;
-        }
-
-        .dashboard-layout {
-            display: grid;
-            gap: 22px;
-        }
-
-        .dashboard-welcome {
-            display: grid;
-            gap: 10px;
-        }
-
+        .manager-dashboard { margin-top: 34px; }
+        .dashboard-panel { width: 100%; max-width: none; }
+        .dashboard-layout { display: grid; gap: 22px; }
+        .dashboard-welcome { display: grid; gap: 10px; }
         .dashboard-welcome h1,
-        .dashboard-card h3 {
-            margin: 0;
-        }
-
+        .dashboard-card h3 { margin: 0; }
         .dashboard-welcome p,
         .dashboard-card p {
             margin: 0;
             color: var(--muted);
             line-height: 1.6;
         }
-
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 14px;
         }
-
         .dashboard-card {
             display: grid;
             gap: 12px;
@@ -57,13 +37,11 @@ requireManager();
             border-radius: 8px;
             background: #fff;
         }
-
         .dashboard-card h3 {
             color: var(--ink);
             font-size: 22px;
             line-height: 1.25;
         }
-
         .dashboard-actions {
             display: flex;
             flex-wrap: wrap;
@@ -71,11 +49,8 @@ requireManager();
             align-self: end;
             margin-top: 6px;
         }
-
         @media (max-width: 820px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
+            .dashboard-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -93,6 +68,7 @@ requireManager();
             <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/promocodes.php">優惠碼管理</a>
             <a href="/concert_system/manager/orders.php">訂單管理</a>
+            <a href="/concert_system/manager/reports.php">銷售報表</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
             <a class="login-button" href="/concert_system/manager/logout.php">登出</a>
         </nav>
@@ -111,7 +87,7 @@ requireManager();
             <div class="dashboard-layout">
                 <div class="dashboard-welcome">
                     <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
-                    <p>你已登入管理員帳號。可從這裡進入演唱會、場次、座位票價、優惠碼與訂單管理。</p>
+                    <p>你已登入管理員帳號。可從這裡進入各項 System Manager 功能。</p>
                 </div>
 
                 <div class="dashboard-grid">
@@ -128,7 +104,7 @@ requireManager();
                     <article class="dashboard-card">
                         <div>
                             <h3>主辦單位管理</h3>
-                            <p>管理主辦單位名稱、聯絡人、Email、電話與地址。</p>
+                            <p>管理主辦單位名稱、聯絡窗口、Email 與電話。</p>
                         </div>
                         <div class="dashboard-actions">
                             <a class="placeholder-link" href="/concert_system/manager/organizers.php">進入管理</a>
@@ -158,7 +134,7 @@ requireManager();
                     <article class="dashboard-card">
                         <div>
                             <h3>優惠碼管理</h3>
-                            <p>管理促銷碼、折扣金額與啟用狀態。</p>
+                            <p>管理促銷碼、折扣金額、使用限制與啟用狀態。</p>
                         </div>
                         <div class="dashboard-actions">
                             <a class="placeholder-link" href="/concert_system/manager/promocodes.php">進入管理</a>
@@ -168,10 +144,20 @@ requireManager();
                     <article class="dashboard-card">
                         <div>
                             <h3>訂單管理</h3>
-                            <p>查看所有訂單、購買者、演唱會、場次、金額與付款狀態。</p>
+                            <p>查看訂單、票券明細，取消未付款訂單並釋放座位。</p>
                         </div>
                         <div class="dashboard-actions">
                             <a class="placeholder-link" href="/concert_system/manager/orders.php">進入管理</a>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-card">
+                        <div>
+                            <h3>銷售報表</h3>
+                            <p>查看總營收、已售票數、各場次銷售狀況與折扣碼統計。</p>
+                        </div>
+                        <div class="dashboard-actions">
+                            <a class="placeholder-link" href="/concert_system/manager/reports.php">查看報表</a>
                         </div>
                     </article>
 

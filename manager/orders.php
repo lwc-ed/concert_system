@@ -299,7 +299,8 @@ if (!$dbReady) {
         }
 
         .table-wrap {
-            overflow-x: auto;
+            width: 100%;
+            overflow-x: hidden;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: #fff;
@@ -308,8 +309,8 @@ if (!$dbReady) {
         .orders-table,
         .tickets-table {
             width: 100%;
-            min-width: 1060px;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .orders-table th,
@@ -319,8 +320,9 @@ if (!$dbReady) {
             padding: 13px 14px;
             border-bottom: 1px solid var(--line);
             text-align: left;
-            vertical-align: middle;
-            white-space: nowrap;
+            vertical-align: top;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
 
         .orders-table th,
@@ -336,6 +338,23 @@ if (!$dbReady) {
             border-bottom: 0;
         }
 
+        .orders-table th:nth-child(1),
+        .orders-table td:nth-child(1) { width: 76px; }
+        .orders-table th:nth-child(2),
+        .orders-table td:nth-child(2) { width: 18%; }
+        .orders-table th:nth-child(3),
+        .orders-table td:nth-child(3) { width: 22%; }
+        .orders-table th:nth-child(4),
+        .orders-table td:nth-child(4) { width: 150px; }
+        .orders-table th:nth-child(5),
+        .orders-table td:nth-child(5) { width: 105px; }
+        .orders-table th:nth-child(6),
+        .orders-table td:nth-child(6) { width: 160px; }
+        .orders-table th:nth-child(7),
+        .orders-table td:nth-child(7) { width: 150px; }
+        .orders-table th:nth-child(8),
+        .orders-table td:nth-child(8) { width: 132px; }
+
         .buyer-cell { display: grid; gap: 2px; }
         .buyer-cell span { color: var(--muted); font-size: 13px; font-weight: 700; }
 
@@ -349,6 +368,7 @@ if (!$dbReady) {
             color: #80520e;
             font-size: 13px;
             font-weight: 900;
+            white-space: normal;
         }
 
         .status-pill.is-paid { background: #dff3e8; color: #245b38; }
@@ -357,8 +377,17 @@ if (!$dbReady) {
 
         .row-actions {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 8px;
+            align-items: stretch;
+        }
+
+        .row-actions .secondary-action,
+        .row-actions .danger-action {
+            width: 100%;
+            min-height: 38px;
+            padding: 0 10px;
+            font-size: 13px;
         }
 
         .danger-action {
@@ -377,6 +406,17 @@ if (!$dbReady) {
 
         .danger-action:hover { background: #631717; }
         .empty-row { padding: 22px; color: var(--muted); font-weight: 800; text-align: center; }
+
+        @media (max-width: 980px) {
+            .table-wrap {
+                overflow-x: auto;
+            }
+
+            .orders-table,
+            .tickets-table {
+                min-width: 900px;
+            }
+        }
     </style>
 </head>
 <body>
