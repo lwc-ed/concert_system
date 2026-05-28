@@ -10,7 +10,7 @@ require_once __DIR__ . '/db_config.php';
  * are not ready yet.
  *
  * The data mirrors these database tables:
- * - Concert(concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice)
+ * - Concert(concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
  * - ShowDate(show_id, concert_id, show_datetime, status)
  * - Seat(seat_id, show_id, seat_number, price, status)
  */
@@ -38,7 +38,7 @@ function fetchDatabaseRows($sql, $params = []) {
 
 function getConcertTable() {
     $rows = fetchDatabaseRows(
-        'SELECT concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice
+        'SELECT concert_id, artist, title, venue, concert_address AS address, image, sale_start, sale_end, description, notice
          FROM Concert
          ORDER BY concert_id'
     );
@@ -58,7 +58,7 @@ function getConcertTable() {
             'sale_start' => '2026.05.01 12:00',
             'sale_end' => '2026.06.27 23:59',
             'description' => '跨界幸福舞台、沉浸式燈光與完整現場樂隊編制，打造幸福期末演唱會，有參加都會有幸福草莓蛋糕喔！',
-            'notice' => '本場次目前已售完，可先保留詳情頁與座位資料作為資料庫展示使用。',
+            'notice' => '本場次目前部分場次已售完，想要和幸福崴孟一起幸福æspa要盡快唷！',
         ],
         [
             'concert_id' => 2,
@@ -75,14 +75,14 @@ function getConcertTable() {
         [
             'concert_id' => 3,
             'artist' => '史上最屌演唱會',
-            'title' => 'Final Call ',
+            'title' => 'Final Call',
             'venue' => '百老匯',
             'address' => 'New York, NY, United States',
             'image' => 'assets/images/concert-3.png',
             'sale_start' => '2027.01.10 12:00',
             'sale_end' => '2027.06.04 23:59',
             'description' => '壓軸場次以大型舞台機關與海外場館規格呈現，頁面保留票區、剩餘票數與訂票流程入口。',
-            'notice' => '每位會員每筆訂單最多可購買 4 張票，實際付款與座位鎖定可於後續串接訂單資料表。',
+            'notice' => '每位會員每筆訂單最多可購買 2 張票，實際付款與座位鎖定可於後續串接訂單資料表。',
         ],
     ];
 }

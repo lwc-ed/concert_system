@@ -9,5 +9,5 @@ unset(
 );
 
 $_SESSION['manager_notice'] = '你已登出管理後台。';
-header('Location: login.php');
+header('Location: ../customer/login.php');
 exit;

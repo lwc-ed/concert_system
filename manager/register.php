@@ -7,6 +7,11 @@ redirectIfManagerLoggedIn();
 $errors = [];
 $username = '';
 $email = '';
+$realName = '';
+$birthDate = '';
+$phoneNum = '';
+$idNumber = '';
+$userAddress = '';
 $managerExists = true;
 
 if ($pdo === null) {
@@ -22,6 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
     } else {
         $username = trim($_POST['username'] ?? '');
         $email = trim($_POST['email'] ?? '');
+        $realName = trim($_POST['real_name'] ?? '');
+        $birthDate = trim($_POST['birth_date'] ?? '');
+        $phoneNum = trim($_POST['phone_num'] ?? '');
+        $idNumber = strtoupper(trim($_POST['id_number'] ?? ''));
+        $userAddress = trim($_POST['user_address'] ?? '');
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
@@ -33,6 +43,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
             $errors[] = '請輸入正確的 Email。';
         }
 
+        if ($realName === '' || strlen($realName) > 50) {
+            $errors[] = '真實姓名必填，且長度不可超過 50 個字。';
+        }
+
+        if ($birthDate === '') {
+            $errors[] = '生日必填。';
+        }
+
+        if ($phoneNum === '' || strlen($phoneNum) > 20) {
+            $errors[] = '電話必填，且長度不可超過 20 個字。';
+        }
+
+        if ($idNumber === '' || strlen($idNumber) > 20) {
+            $errors[] = '身分證字號必填，且長度不可超過 20 個字。';
+        }
+
         if (strlen($password) < 8) {
             $errors[] = '密碼至少需要 8 個字元。';
         }
@@ -42,23 +68,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
         }
 
         if (!$errors) {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM User WHERE username = ? OR email = ?');
-            $stmt->execute([$username, $email]);
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM User WHERE username = ? OR email = ? OR id_number = ?');
+            $stmt->execute([$username, $email, $idNumber]);
 
             if ((int) $stmt->fetchColumn() > 0) {
-                $errors[] = '帳號或 Email 已被使用。';
+                $errors[] = '帳號、Email 或身分證字號已被使用。';
             }
         }
 
         if (!$errors) {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare(
-                "INSERT INTO User (username, email, password, role) VALUES (?, ?, ?, 'manager')"
+                "INSERT INTO User
+                 (username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manager')"
             );
-            $stmt->execute([$username, $email, $passwordHash]);
+            $stmt->execute([
+                $username,
+                $realName,
+                $birthDate,
+                $phoneNum,
+                $idNumber,
+                $email,
+                $userAddress,
+                $passwordHash,
+            ]);
 
             $_SESSION['manager_notice'] = '管理員註冊成功，請登入。';
-            header('Location: login.php');
+            header('Location: ../customer/login.php');
             exit;
         }
     }
@@ -85,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
             </div>
         <?php elseif ($managerExists): ?>
             <div class="auth-alert">系統已存在管理員，請直接登入。</div>
-            <a class="placeholder-link" href="login.php">前往登入</a>
+            <a class="placeholder-link" href="../customer/login.php">前往登入</a>
         <?php else: ?>
             <?php if ($errors): ?>
                 <div class="auth-alert">
@@ -105,6 +142,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
                     <input type="email" name="email" maxlength="100" required value="<?= h($email) ?>">
                 </label>
                 <label>
+                    <span>真實姓名</span>
+                    <input type="text" name="real_name" maxlength="50" required value="<?= h($realName) ?>">
+                </label>
+                <label>
+                    <span>生日</span>
+                    <input type="date" name="birth_date" required value="<?= h($birthDate) ?>">
+                </label>
+                <label>
+                    <span>電話</span>
+                    <input type="text" name="phone_num" maxlength="20" required value="<?= h($phoneNum) ?>">
+                </label>
+                <label>
+                    <span>身分證字號</span>
+                    <input type="text" name="id_number" maxlength="20" required value="<?= h($idNumber) ?>">
+                </label>
+                <label>
+                    <span>地址</span>
+                    <input type="text" name="user_address" maxlength="255" value="<?= h($userAddress) ?>">
+                </label>
+                <label>
                     <span>密碼</span>
                     <input type="password" name="password" minlength="8" required>
                 </label>
@@ -114,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
                 </label>
                 <button class="placeholder-link" type="submit">建立管理員</button>
             </form>
-            <p class="auth-switch">已有帳號？<a href="login.php">登入管理後台</a></p>
+            <p class="auth-switch">已有帳號？<a href="../customer/login.php">登入管理後台</a></p>
         <?php endif; ?>
     </main>
 </body>

@@ -4,27 +4,77 @@ USE concert_system;
 -- If teammates already imported an older inputdata.sql, run this file again to refresh
 -- Concert / ShowDate / Seat data to match the current frontend prototype.
 -- Existing Ticket and Orders rows are cleared because they reference old Seat rows.
+USE concert_system;
+
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM Ticket;
 DELETE FROM Orders;
+DELETE FROM PromoCode;
 DELETE FROM Seat;
 DELETE FROM ShowDate;
 DELETE FROM Concert;
+
+TRUNCATE TABLE Ticket;
+TRUNCATE TABLE Orders;
+TRUNCATE TABLE Seat;
+TRUNCATE TABLE ShowDate;
+TRUNCATE TABLE Concert;
+TRUNCATE TABLE User;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 ALTER TABLE Ticket AUTO_INCREMENT = 1;
 ALTER TABLE Orders AUTO_INCREMENT = 1;
+ALTER TABLE PromoCode AUTO_INCREMENT = 1;
 ALTER TABLE Seat AUTO_INCREMENT = 1;
 ALTER TABLE ShowDate AUTO_INCREMENT = 1;
 ALTER TABLE Concert AUTO_INCREMENT = 1;
 
+INSERT INTO `User`
+(username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+VALUES
+(
+    'test',
+    '測試帳號',
+    '2000-01-01 00:00:00',
+    '0912345678',
+    'A123456789',
+    'test@example.com',
+    'Taiwan',
+    '12345678',
+    'manager'
+);
+
+INSERT INTO `User`
+(username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+VALUES
+(
+    'lwcissohandsome',
+    '李瑋晨很帥',
+    '2000-01-01 00:00:01',
+    '0987-654-321',
+    'A130022039',
+    'lwcissohandsome@gmail.com',
+    'Taiwan',
+    '11111111',
+    'customer'
+);
+
+INSERT INTO PromoCode
+    (code_name, discount_amount, usage_limit, starts_at, expires_at, is_active)
+VALUES
+    ('WELCOME100', 100, 50, '2026-01-01 00:00:00', '2027-12-31 23:59:59', TRUE),
+    ('VIP500', 500, 10, '2026-05-01 00:00:00', '2026-12-31 23:59:59', TRUE),
+    ('EXPIRED200', 200, 20, '2025-01-01 00:00:00', '2025-12-31 23:59:59', TRUE),
+    ('OFFLINE300', 300, NULL, '2026-01-01 00:00:00', '2027-12-31 23:59:59', FALSE);
+
 INSERT INTO Concert
-    (concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice)
+    (concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
 VALUES
     (
         1,
+        '崴崴孟孟 x æspa',
         '史詩級跨界合作 <幸福崴孟演唱會 x æspa>',
-        '2026 Taipei Arena Tour',
         '台北大巨蛋',
         '台北市信義區忠孝東路四段515號',
         'assets/images/concert-1.png',
@@ -35,8 +85,8 @@ VALUES
     ),
     (
         2,
-        '婉晴粉絲見面會',
-        '全台巡迴中',
+        '婉晴',
+        '婉晴粉絲見面會・全台巡迴中',
         '台北小巨蛋',
         '台北市松山區南京東路四段2號',
         'assets/images/concert-2.png',
@@ -47,8 +97,8 @@ VALUES
     ),
     (
         3,
-        '史上最屌演唱會',
-        'Final Call',
+        '第八組的帥哥們',
+        '史上最屌演唱會・Final Call',
         '百老匯',
         'New York, NY, United States',
         'assets/images/concert-3.png',
