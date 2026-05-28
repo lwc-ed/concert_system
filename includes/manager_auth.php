@@ -16,7 +16,7 @@ function isManagerLoggedIn()
 function requireManager()
 {
     if (!isManagerLoggedIn()) {
-        header('Location: login.php');
+        header('Location: ../customer/login.php');
         exit;
     }
 }

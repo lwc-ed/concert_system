@@ -37,9 +37,19 @@ require_once __DIR__ . '/../includes/concerts.php';
  * - customers: id, name, email, password_hash, phone, created_at
  */
 
-$isLoggedIn = isset($_SESSION['customer_id']);
-$memberLink = $isLoggedIn ? 'member.php' : 'login.php';
-$memberText = $isLoggedIn ? '會員資訊' : '會員登入';
+$isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$isManagerLoggedIn = isset($_SESSION['manager_id']) && ($_SESSION['manager_role'] ?? '') === 'manager';
+$isLoggedIn = $isCustomerLoggedIn || $isManagerLoggedIn;
+$memberLink = 'login.php';
+$memberText = '會員登入';
+
+if ($isManagerLoggedIn) {
+    $memberLink = '../manager/dashboard.php';
+    $memberText = $_SESSION['manager_username'] ?? 'manager';
+} elseif ($isCustomerLoggedIn) {
+    $memberLink = 'member.php';
+    $memberText = $_SESSION['customer_username'] ?? '會員';
+}
 $concertId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
 // Future DB connection point:
