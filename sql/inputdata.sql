@@ -1,3 +1,23 @@
+USE concert_system;
+
+-- Re-runnable mock data seed.
+-- If teammates already imported an older inputdata.sql, run this file again to refresh
+-- Concert / ShowDate / Seat data to match the current frontend prototype.
+-- Existing Ticket and Orders rows are cleared because they reference old Seat rows.
+SET FOREIGN_KEY_CHECKS = 0;
+DELETE FROM Ticket;
+DELETE FROM Orders;
+DELETE FROM Seat;
+DELETE FROM ShowDate;
+DELETE FROM Concert;
+SET FOREIGN_KEY_CHECKS = 1;
+
+ALTER TABLE Ticket AUTO_INCREMENT = 1;
+ALTER TABLE Orders AUTO_INCREMENT = 1;
+ALTER TABLE Seat AUTO_INCREMENT = 1;
+ALTER TABLE ShowDate AUTO_INCREMENT = 1;
+ALTER TABLE Concert AUTO_INCREMENT = 1;
+
 INSERT INTO Concert
     (concert_id, artist, title, venue, address, image, sale_start, sale_end, description, notice)
 VALUES
@@ -28,7 +48,7 @@ VALUES
     (
         3,
         '史上最屌演唱會',
-        'Final Call ',
+        'Final Call',
         '百老匯',
         'New York, NY, United States',
         'assets/images/concert-3.png',
@@ -52,22 +72,30 @@ VALUES
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS append_mock_seats $$
+DROP PROCEDURE IF EXISTS append_mock_seat_unit $$
 
 CREATE PROCEDURE append_mock_seats(
     IN p_show_id INT,
-    IN p_zone_name VARCHAR(20),
+    IN p_zone_name VARCHAR(50),
     IN p_price INT,
     IN p_quantity INT,
     IN p_status VARCHAR(20)
 )
 BEGIN
     DECLARE seat_index INT DEFAULT 1;
+    DECLARE existing_count INT DEFAULT 0;
+
+    SELECT COUNT(*)
+    INTO existing_count
+    FROM Seat
+    WHERE show_id = p_show_id
+      AND SUBSTRING_INDEX(seat_number, '_', 1) = p_zone_name;
 
     WHILE seat_index <= p_quantity DO
         INSERT INTO Seat (show_id, seat_number, price, status)
         VALUES (
             p_show_id,
-            CONCAT(p_zone_name, '_', seat_index, '號'),
+            CONCAT(p_zone_name, '_', existing_count + seat_index, '號'),
             p_price,
             p_status
         );
@@ -76,34 +104,135 @@ BEGIN
     END WHILE;
 END $$
 
+CREATE PROCEDURE append_mock_seat_unit(
+    IN p_show_id INT,
+    IN p_seat_number VARCHAR(50),
+    IN p_price INT,
+    IN p_status VARCHAR(20)
+)
+BEGIN
+    INSERT INTO Seat (show_id, seat_number, price, status)
+    VALUES (p_show_id, p_seat_number, p_price, p_status);
+END $$
+
 DELIMITER ;
 
-CALL append_mock_seats(101, '幸福搖滾區', 5800, 12, 'sold');
-CALL append_mock_seats(101, '幸福崴區', 4200, 80, 'sold');
-CALL append_mock_seats(101, '幸福孟區', 2800, 120, 'sold');
-CALL append_mock_seats(101, '幸福崴孟區', 1800, 160, 'sold');
-CALL append_mock_seats(102, '幸福搖滾區', 5800, 12, 'sold');
-CALL append_mock_seats(102, '幸福崴區', 4200, 80, 'sold');
-CALL append_mock_seats(102, '幸福孟區', 2800, 120, 'available');
-CALL append_mock_seats(102, '幸福崴孟區', 1800, 160, 'available');
+CALL append_mock_seats(101, '幸福搖滾區1', 5800, 6, 'sold');
+CALL append_mock_seats(101, '幸福搖滾區2', 5800, 6, 'sold');
+CALL append_mock_seats(101, '幸福崴區1', 4200, 20, 'sold');
+CALL append_mock_seats(101, '幸福崴區2', 4200, 20, 'sold');
+CALL append_mock_seats(101, '幸福崴區3', 4200, 20, 'sold');
+CALL append_mock_seats(101, '幸福崴區4', 4200, 20, 'sold');
+CALL append_mock_seats(101, '幸福孟區1', 2800, 30, 'sold');
+CALL append_mock_seats(101, '幸福孟區2', 2800, 30, 'sold');
+CALL append_mock_seats(101, '幸福孟區3', 2800, 30, 'sold');
+CALL append_mock_seats(101, '幸福孟區4', 2800, 30, 'sold');
+CALL append_mock_seats(101, '幸福崴孟區1', 1800, 40, 'sold');
+CALL append_mock_seats(101, '幸福崴孟區2', 1800, 40, 'sold');
+CALL append_mock_seats(101, '幸福崴孟區3', 1800, 40, 'sold');
+CALL append_mock_seats(101, '幸福崴孟區4', 1800, 40, 'sold');
+CALL append_mock_seats(102, '幸福搖滾區1', 5800, 6, 'sold');
+CALL append_mock_seats(102, '幸福搖滾區2', 5800, 6, 'sold');
+CALL append_mock_seats(102, '幸福崴區1', 4200, 20, 'sold');
+CALL append_mock_seats(102, '幸福崴區2', 4200, 20, 'sold');
+CALL append_mock_seats(102, '幸福崴區3', 4200, 20, 'sold');
+CALL append_mock_seats(102, '幸福崴區4', 4200, 20, 'sold');
+CALL append_mock_seats(102, '幸福孟區1', 2800, 30, 'available');
+CALL append_mock_seats(102, '幸福孟區2', 2800, 30, 'available');
+CALL append_mock_seats(102, '幸福孟區3', 2800, 30, 'available');
+CALL append_mock_seats(102, '幸福孟區4', 2800, 30, 'available');
+CALL append_mock_seats(102, '幸福崴孟區1', 1800, 40, 'available');
+CALL append_mock_seats(102, '幸福崴孟區2', 1800, 40, 'available');
+CALL append_mock_seats(102, '幸福崴孟區3', 1800, 40, 'available');
+CALL append_mock_seats(102, '幸福崴孟區4', 1800, 40, 'available');
 
-CALL append_mock_seats(201, '特典區', 500, 30, 'sold');
-CALL append_mock_seats(201, '一般區', 300, 120, 'sold');
-CALL append_mock_seats(201, '學生區', 1, 50, 'sold');
-CALL append_mock_seats(202, '特典區', 500, 30, 'sold');
-CALL append_mock_seats(202, '一般區', 300, 120, 'sold');
-CALL append_mock_seats(202, '學生區', 1, 50, 'sold');
-CALL append_mock_seats(203, '特典區', 500, 30, 'sold');
-CALL append_mock_seats(203, '一般區', 300, 120, 'sold');
-CALL append_mock_seats(203, '學生區', 1, 50, 'sold');
+CALL append_mock_seats(201, '特典區1', 500, 15, 'sold');
+CALL append_mock_seats(201, '特典區2', 500, 15, 'sold');
+CALL append_mock_seats(201, '一般區1', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區2', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區3', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區4', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區5', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區6', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區7', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區8', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區9', 300, 12, 'sold');
+CALL append_mock_seats(201, '一般區10', 300, 12, 'sold');
+CALL append_mock_seats(201, '學生區1', 1, 9, 'sold');
+CALL append_mock_seats(201, '學生區2', 1, 9, 'sold');
+CALL append_mock_seats(201, '學生區3', 1, 8, 'sold');
+CALL append_mock_seats(201, '學生區4', 1, 8, 'sold');
+CALL append_mock_seats(201, '學生區5', 1, 8, 'sold');
+CALL append_mock_seats(201, '學生區6', 1, 8, 'sold');
+CALL append_mock_seats(202, '特典區1', 500, 15, 'sold');
+CALL append_mock_seats(202, '特典區2', 500, 15, 'sold');
+CALL append_mock_seats(202, '一般區1', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區2', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區3', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區4', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區5', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區6', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區7', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區8', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區9', 300, 12, 'sold');
+CALL append_mock_seats(202, '一般區10', 300, 12, 'sold');
+CALL append_mock_seats(202, '學生區1', 1, 9, 'sold');
+CALL append_mock_seats(202, '學生區2', 1, 9, 'sold');
+CALL append_mock_seats(202, '學生區3', 1, 8, 'sold');
+CALL append_mock_seats(202, '學生區4', 1, 8, 'sold');
+CALL append_mock_seats(202, '學生區5', 1, 8, 'sold');
+CALL append_mock_seats(202, '學生區6', 1, 8, 'sold');
+CALL append_mock_seats(203, '特典區1', 500, 15, 'sold');
+CALL append_mock_seats(203, '特典區2', 500, 15, 'sold');
+CALL append_mock_seats(203, '一般區1', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區2', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區3', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區4', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區5', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區6', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區7', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區8', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區9', 300, 12, 'sold');
+CALL append_mock_seats(203, '一般區10', 300, 12, 'sold');
+CALL append_mock_seats(203, '學生區1', 1, 9, 'sold');
+CALL append_mock_seats(203, '學生區2', 1, 9, 'sold');
+CALL append_mock_seats(203, '學生區3', 1, 8, 'sold');
+CALL append_mock_seats(203, '學生區4', 1, 8, 'sold');
+CALL append_mock_seats(203, '學生區5', 1, 8, 'sold');
+CALL append_mock_seats(203, '學生區6', 1, 8, 'sold');
 
-CALL append_mock_seats(301, '至尊包廂', 100000, 8, 'available');
-CALL append_mock_seats(301, '搖滾站區', 36000, 42, 'available');
-CALL append_mock_seats(301, '一樓座席', 18000, 120, 'available');
-CALL append_mock_seats(301, '二樓座席', 9000, 260, 'available');
-CALL append_mock_seats(302, '至尊包廂', 100000, 6, 'available');
-CALL append_mock_seats(302, '搖滾站區', 36000, 35, 'available');
-CALL append_mock_seats(302, '一樓座席', 18000, 110, 'available');
-CALL append_mock_seats(302, '二樓座席', 9000, 239, 'available');
+CALL append_mock_seat_unit(301, '至尊包廂1', 100000, 'available');
+CALL append_mock_seat_unit(301, '至尊包廂2', 100000, 'available');
+CALL append_mock_seats(301, '搖滾站區1', 36000, 12, 'available');
+CALL append_mock_seats(301, '搖滾站區1', 36000, 2, 'reserved');
+CALL append_mock_seats(301, '搖滾站區2', 36000, 12, 'available');
+CALL append_mock_seats(301, '搖滾站區2', 36000, 2, 'reserved');
+CALL append_mock_seats(301, '搖滾站區3', 36000, 12, 'available');
+CALL append_mock_seats(301, '搖滾站區3', 36000, 2, 'sold');
+CALL append_mock_seats(301, '一樓座席1', 18000, 56, 'available');
+CALL append_mock_seats(301, '一樓座席1', 18000, 4, 'sold');
+CALL append_mock_seats(301, '一樓座席2', 18000, 56, 'available');
+CALL append_mock_seats(301, '一樓座席2', 18000, 4, 'sold');
+CALL append_mock_seats(301, '二樓座席1', 9000, 122, 'available');
+CALL append_mock_seats(301, '二樓座席1', 9000, 8, 'reserved');
+CALL append_mock_seats(301, '二樓座席2', 9000, 123, 'available');
+CALL append_mock_seats(301, '二樓座席2', 9000, 7, 'reserved');
+CALL append_mock_seat_unit(302, '至尊包廂1', 100000, 'available');
+CALL append_mock_seat_unit(302, '至尊包廂2', 100000, 'reserved');
+CALL append_mock_seats(302, '搖滾站區1', 36000, 10, 'available');
+CALL append_mock_seats(302, '搖滾站區1', 36000, 2, 'sold');
+CALL append_mock_seats(302, '搖滾站區2', 36000, 10, 'available');
+CALL append_mock_seats(302, '搖滾站區2', 36000, 2, 'sold');
+CALL append_mock_seats(302, '搖滾站區3', 36000, 10, 'available');
+CALL append_mock_seats(302, '搖滾站區3', 36000, 1, 'sold');
+CALL append_mock_seats(302, '一樓座席1', 18000, 50, 'available');
+CALL append_mock_seats(302, '一樓座席1', 18000, 5, 'reserved');
+CALL append_mock_seats(302, '一樓座席2', 18000, 50, 'available');
+CALL append_mock_seats(302, '一樓座席2', 18000, 5, 'reserved');
+CALL append_mock_seats(302, '二樓座席1', 9000, 110, 'available');
+CALL append_mock_seats(302, '二樓座席1', 9000, 10, 'sold');
+CALL append_mock_seats(302, '二樓座席2', 9000, 110, 'available');
+CALL append_mock_seats(302, '二樓座席2', 9000, 9, 'sold');
 
 DROP PROCEDURE IF EXISTS append_mock_seats;
+DROP PROCEDURE IF EXISTS append_mock_seat_unit;
