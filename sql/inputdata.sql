@@ -13,12 +13,14 @@ DELETE FROM PromoCode;
 DELETE FROM Seat;
 DELETE FROM ShowDate;
 DELETE FROM Concert;
+DELETE FROM Organizer;
 
 TRUNCATE TABLE Ticket;
 TRUNCATE TABLE Orders;
 TRUNCATE TABLE Seat;
 TRUNCATE TABLE ShowDate;
 TRUNCATE TABLE Concert;
+TRUNCATE TABLE Organizer;
 TRUNCATE TABLE User;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -29,6 +31,7 @@ ALTER TABLE PromoCode AUTO_INCREMENT = 1;
 ALTER TABLE Seat AUTO_INCREMENT = 1;
 ALTER TABLE ShowDate AUTO_INCREMENT = 1;
 ALTER TABLE Concert AUTO_INCREMENT = 1;
+ALTER TABLE Organizer AUTO_INCREMENT = 1;
 
 INSERT INTO `User`
 (username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
@@ -68,10 +71,18 @@ VALUES
     ('EXPIRED200', 200, 20, '2025-01-01 00:00:00', '2025-12-31 23:59:59', TRUE),
     ('OFFLINE300', 300, NULL, '2026-01-01 00:00:00', '2027-12-31 23:59:59', FALSE);
 
+INSERT INTO Organizer
+    (organizer_id, organizer_name, contact_person, contact_email, contact_phone, organizer_address, note)
+VALUES
+    (1, '幸福娛樂股份有限公司', '王幸福', 'happy@example.com', '02-2345-6789', '台北市信義區幸福路 1 號', '負責大型流行音樂與跨界合作活動。'),
+    (2, '晴天活動企劃', '陳婉晴', 'sunny@example.com', '02-8765-4321', '台北市松山區南京東路四段 2 號', '粉絲見面會與小型巡迴活動主辦。'),
+    (3, 'Final Call Global', 'Alex Chen', 'finalcall@example.com', '+1-212-555-0199', 'New York, NY, United States', '海外場館與國際巡演窗口。');
+
 INSERT INTO Concert
-    (concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
+    (concert_id, organizer_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
 VALUES
     (
+        1,
         1,
         '崴崴孟孟 x æspa',
         '史詩級跨界合作 <幸福崴孟演唱會 x æspa>',
@@ -85,6 +96,7 @@ VALUES
     ),
     (
         2,
+        2,
         '婉晴',
         '婉晴粉絲見面會・全台巡迴中',
         '台北小巨蛋',
@@ -96,6 +108,7 @@ VALUES
         '活動已結束，訂票按鈕會自動呈現不可購買狀態。'
     ),
     (
+        3,
         3,
         '第八組的帥哥們',
         '史上最屌演唱會・Final Call',

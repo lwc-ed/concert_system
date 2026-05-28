@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS Orders;
 DROP TABLE IF EXISTS Seat;
 DROP TABLE IF EXISTS ShowDate;
 DROP TABLE IF EXISTS Concert;
+DROP TABLE IF EXISTS Organizer;
 DROP TABLE IF EXISTS PromoCode;
 DROP TABLE IF EXISTS User;
 
@@ -42,9 +43,23 @@ CREATE TABLE PromoCode (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- 3. 演唱會表
+-- 3. 主辦單位表
+CREATE TABLE Organizer (
+    organizer_id INT AUTO_INCREMENT PRIMARY KEY,
+    organizer_name VARCHAR(100) NOT NULL UNIQUE,
+    contact_person VARCHAR(100) NULL,
+    contact_email VARCHAR(100) NULL,
+    contact_phone VARCHAR(30) NULL,
+    organizer_address VARCHAR(255) NULL,
+    note TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 4. 演唱會表
 CREATE TABLE Concert (
     concert_id INT AUTO_INCREMENT PRIMARY KEY,
+    organizer_id INT NULL,                          -- 外鍵，連結 Organizer
     artist VARCHAR(100) NOT NULL,                    -- 藝人/團體名稱
     title VARCHAR(255) NOT NULL,                     -- 演唱會完整標題
     venue VARCHAR(100) NOT NULL,                     -- 場地名稱 (如：高雄巨蛋)
@@ -54,10 +69,11 @@ CREATE TABLE Concert (
     sale_end DATETIME NOT NULL,                      -- 售票截止時間
     description TEXT,                                -- 活動簡介
     notice TEXT,                                     -- 購票及入場注意事項
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organizer_id) REFERENCES Organizer(organizer_id) ON DELETE SET NULL
 );
 
--- 4 . 演唱會場次時間表
+-- 5 . 演唱會場次時間表
 CREATE TABLE ShowDate (
     show_id INT AUTO_INCREMENT PRIMARY KEY,
     concert_id INT NOT NULL,                         -- 外鍵，連結 Concert
@@ -66,7 +82,7 @@ CREATE TABLE ShowDate (
     FOREIGN KEY (concert_id) REFERENCES Concert(concert_id) ON DELETE CASCADE
 );
 
--- 5. 座位資料表
+-- 6. 座位資料表
 CREATE TABLE Seat (
     seat_id INT AUTO_INCREMENT PRIMARY KEY,
     show_id INT NOT NULL,                            -- 外鍵，連結 ShowDate
@@ -75,7 +91,7 @@ CREATE TABLE Seat (
     status VARCHAR(50) DEFAULT 'available',          -- 座位狀態：available / reserved / sold
     FOREIGN KEY (show_id) REFERENCES ShowDate(show_id) ON DELETE CASCADE
 );
--- 6. 訂單總表
+-- 7. 訂單總表
 CREATE TABLE Orders (
     order_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
@@ -89,7 +105,7 @@ CREATE TABLE Orders (
     FOREIGN KEY (promo_id) REFERENCES PromoCode(promo_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- 7. 門票明細表 (實現實名制與一筆訂單多個座位的核心)
+-- 8. 門票明細表 (實現實名制與一筆訂單多個座位的核心)
 CREATE TABLE Ticket (
     ticket_id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT,

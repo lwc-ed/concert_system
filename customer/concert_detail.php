@@ -198,6 +198,22 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                             <span>結束售票</span>
                             <strong><?= h($concert['sale_end']) ?></strong>
                         </div>
+                        <div>
+                            <span>主辦單位</span>
+                            <strong><?= h($concert['organizer_name'] ?? '未指定') ?></strong>
+                        </div>
+                        <div>
+                            <span>主辦聯絡人</span>
+                            <strong><?= h($concert['organizer_contact_person'] ?? '-') ?></strong>
+                        </div>
+                        <div>
+                            <span>主辦聯絡 Email</span>
+                            <strong><?= h($concert['organizer_contact_email'] ?? '-') ?></strong>
+                        </div>
+                        <div>
+                            <span>主辦聯絡電話</span>
+                            <strong><?= h($concert['organizer_contact_phone'] ?? '-') ?></strong>
+                        </div>
                     </div>
                 </article>
 
