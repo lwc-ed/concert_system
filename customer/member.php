@@ -42,7 +42,7 @@ if ($pdo === null) {
 } else {
     try {
         $memberStatement = $pdo->prepare(
-            'SELECT user_id, username, email, password, role, created_at
+            'SELECT username, real_name, birth_date, phone_num, id_number, email, user_address
              FROM `User`
              WHERE user_id = :user_id
              LIMIT 1'
@@ -141,10 +141,6 @@ if ($pdo === null) {
 
                 <dl class="member-info-grid">
                     <div>
-                        <dt>會員編號</dt>
-                        <dd>#<?= h($member['user_id']) ?></dd>
-                    </div>
-                    <div>
                         <dt>帳號</dt>
                         <dd><?= h($member['username']) ?></dd>
                     </div>
@@ -153,16 +149,24 @@ if ($pdo === null) {
                         <dd><?= h($member['email']) ?></dd>
                     </div>
                     <div>
-                        <dt>密碼</dt>
-                        <dd class="masked-password">••••••••</dd>
+                        <dt>真實姓名</dt>
+                        <dd><?= h($member['real_name']) ?></dd>
                     </div>
                     <div>
-                        <dt>角色</dt>
-                        <dd><?= h($member['role']) ?></dd>
+                        <dt>生日</dt>
+                        <dd><?= h(memberDateTimeText($member['birth_date'])) ?></dd>
                     </div>
                     <div>
-                        <dt>建立時間</dt>
-                        <dd><?= h(memberDateTimeText($member['created_at'])) ?></dd>
+                        <dt>電話號碼</dt>
+                        <dd><?= h($member['phone_num']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>身分證字號</dt>
+                        <dd><?= h($member['id_number']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>地址</dt>
+                        <dd><?= h($member['user_address'] ?: '-') ?></dd>
                     </div>
                 </dl>
             </section>
