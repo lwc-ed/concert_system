@@ -20,6 +20,8 @@ $stylePath = __DIR__ . '/../assets/css/style.css';
 $styleVersion = file_exists($stylePath) ? filemtime($stylePath) : time();
 $redirect = safeCustomerRedirect($_GET['redirect'] ?? $_POST['redirect'] ?? 'member.php');
 $loginError = null;
+$loginNotice = $_SESSION['manager_notice'] ?? '';
+unset($_SESSION['manager_notice']);
 
 if (isset($_SESSION['manager_id'])) {
     header('Location: ../manager/dashboard.php');
@@ -104,6 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <?php if ($loginError): ?>
                 <p class="auth-alert"><?= h($loginError) ?></p>
+            <?php endif; ?>
+
+            <?php if ($loginNotice !== ''): ?>
+                <p class="auth-alert auth-success"><?= h($loginNotice) ?></p>
             <?php endif; ?>
 
             <form class="auth-form" action="login.php" method="post">

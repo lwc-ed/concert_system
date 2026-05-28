@@ -2,9 +2,19 @@
 session_start();
 require_once __DIR__ . '/includes/concerts.php';
 
-$isLoggedIn = isset($_SESSION['customer_id']);
-$memberLink = $isLoggedIn ? 'customer/member.php' : 'customer/login.php';
-$memberText = $isLoggedIn ? '會員資訊' : '會員登入';
+$isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$isManagerLoggedIn = isset($_SESSION['manager_id']) && ($_SESSION['manager_role'] ?? '') === 'manager';
+$isLoggedIn = $isCustomerLoggedIn || $isManagerLoggedIn;
+$memberLink = 'customer/login.php';
+$memberText = '會員登入';
+
+if ($isManagerLoggedIn) {
+    $memberLink = 'manager/dashboard.php';
+    $memberText = $_SESSION['manager_username'] ?? 'manager';
+} elseif ($isCustomerLoggedIn) {
+    $memberLink = 'customer/member.php';
+    $memberText = $_SESSION['customer_username'] ?? '會員';
+}
 $concerts = getConcerts();
 $styleVersion = filemtime(__DIR__ . '/assets/css/style.css');
 ?>
