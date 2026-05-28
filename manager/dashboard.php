@@ -88,6 +88,7 @@ requireManager();
 
         <nav class="main-nav" aria-label="管理功能">
             <a href="/concert_system/manager/concerts.php">演唱會管理</a>
+            <a href="/concert_system/manager/organizers.php">主辦單位管理</a>
             <a href="/concert_system/manager/shows.php">場次管理</a>
             <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/promocodes.php">優惠碼管理</a>
@@ -120,6 +121,16 @@ requireManager();
                         </div>
                         <div class="dashboard-actions">
                             <a class="placeholder-link" href="/concert_system/manager/concerts.php">進入管理</a>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-card">
+                        <div>
+                            <h3>主辦單位管理</h3>
+                            <p>管理主辦單位名稱、聯絡人、Email、電話與地址。</p>
+                        </div>
+                        <div class="dashboard-actions">
+                            <a class="placeholder-link" href="/concert_system/manager/organizers.php">進入管理</a>
                         </div>
                     </article>
 

@@ -10,7 +10,8 @@ require_once __DIR__ . '/db_config.php';
  * are not ready yet.
  *
  * The data mirrors these database tables:
- * - Concert(concert_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
+ * - Organizer(organizer_id, organizer_name, contact_person, contact_email, contact_phone, organizer_address, note)
+ * - Concert(concert_id, organizer_id, artist, title, venue, concert_address, image, sale_start, sale_end, description, notice)
  * - ShowDate(show_id, concert_id, show_datetime, status)
  * - Seat(seat_id, show_id, seat_number, price, status)
  */
@@ -38,9 +39,27 @@ function fetchDatabaseRows($sql, $params = []) {
 
 function getConcertTable() {
     $rows = fetchDatabaseRows(
-        'SELECT concert_id, artist, title, venue, concert_address AS address, image, sale_start, sale_end, description, notice
-         FROM Concert
-         ORDER BY concert_id'
+        'SELECT
+            c.concert_id,
+            c.organizer_id,
+            c.artist,
+            c.title,
+            c.venue,
+            c.concert_address AS address,
+            c.image,
+            c.sale_start,
+            c.sale_end,
+            c.description,
+            c.notice,
+            o.organizer_name,
+            o.contact_person AS organizer_contact_person,
+            o.contact_email AS organizer_contact_email,
+            o.contact_phone AS organizer_contact_phone,
+            o.organizer_address,
+            o.note AS organizer_note
+         FROM Concert c
+         LEFT JOIN Organizer o ON o.organizer_id = c.organizer_id
+         ORDER BY c.concert_id'
     );
 
     if ($rows !== null) {
@@ -50,6 +69,12 @@ function getConcertTable() {
     return [
         [
             'concert_id' => 1,
+            'organizer_id' => 1,
+            'organizer_name' => '幸福娛樂股份有限公司',
+            'organizer_contact_person' => '王幸福',
+            'organizer_contact_email' => 'happy@example.com',
+            'organizer_contact_phone' => '02-2345-6789',
+            'organizer_address' => '台北市信義區幸福路 1 號',
             'artist' => '史詩級跨界合作 <幸福崴孟演唱會 x æspa>',
             'title' => '2026 Taipei Arena Tour',
             'venue' => '台北大巨蛋',
@@ -62,6 +87,12 @@ function getConcertTable() {
         ],
         [
             'concert_id' => 2,
+            'organizer_id' => 2,
+            'organizer_name' => '晴天活動企劃',
+            'organizer_contact_person' => '陳婉晴',
+            'organizer_contact_email' => 'sunny@example.com',
+            'organizer_contact_phone' => '02-8765-4321',
+            'organizer_address' => '台北市松山區南京東路四段 2 號',
             'artist' => '婉晴粉絲見面會',
             'title' => '全台巡迴中',
             'venue' => '台北小巨蛋',
@@ -74,6 +105,12 @@ function getConcertTable() {
         ],
         [
             'concert_id' => 3,
+            'organizer_id' => 3,
+            'organizer_name' => 'Final Call Global',
+            'organizer_contact_person' => 'Alex Chen',
+            'organizer_contact_email' => 'finalcall@example.com',
+            'organizer_contact_phone' => '+1-212-555-0199',
+            'organizer_address' => 'New York, NY, United States',
             'artist' => '史上最屌演唱會',
             'title' => 'Final Call',
             'venue' => '百老匯',
@@ -208,6 +245,7 @@ function getSeatTable() {
 
 function normalizeConcertRow($row) {
     $row['concert_id'] = (int) $row['concert_id'];
+    $row['organizer_id'] = $row['organizer_id'] !== null ? (int) $row['organizer_id'] : null;
     $row['sale_start'] = formatDatabaseDateTimeForDisplay($row['sale_start']);
     $row['sale_end'] = formatDatabaseDateTimeForDisplay($row['sale_end']);
 

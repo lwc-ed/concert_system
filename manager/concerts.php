@@ -7,6 +7,7 @@ requireManager();
 $errors = [];
 $notice = '';
 $concerts = [];
+$organizers = [];
 $editConcert = null;
 $dbReady = $pdo instanceof PDO;
 $addressColumn = 'address';
@@ -61,6 +62,9 @@ function detectConcertAddressColumn($connection)
 
 function validateConcertForm($postData)
 {
+    $organizerId = filter_var($postData['organizer_id'] ?? null, FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1],
+    ]);
     $artist = trim((string) ($postData['artist'] ?? ''));
     $title = trim((string) ($postData['title'] ?? ''));
     $venue = trim((string) ($postData['venue'] ?? ''));
@@ -102,6 +106,7 @@ function validateConcertForm($postData)
 
     return [
         'errors' => $errors,
+        'organizer_id' => $organizerId ?: null,
         'artist' => $artist,
         'title' => $title,
         'venue' => $venue,
@@ -139,11 +144,12 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$errors) {
             try {
                 $sql = "INSERT INTO Concert
-                        (artist, title, venue, {$addressColumn}, image, sale_start, sale_end, description, notice)
+                        (organizer_id, artist, title, venue, {$addressColumn}, image, sale_start, sale_end, description, notice)
                         VALUES
-                        (:artist, :title, :venue, :address, :image, :sale_start, :sale_end, :description, :notice)";
+                        (:organizer_id, :artist, :title, :venue, :address, :image, :sale_start, :sale_end, :description, :notice)";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
+                    ':organizer_id' => $validated['organizer_id'],
                     ':artist' => $validated['artist'],
                     ':title' => $validated['title'],
                     ':venue' => $validated['venue'],
@@ -177,6 +183,7 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $sql = "UPDATE Concert
                         SET artist = :artist,
+                            organizer_id = :organizer_id,
                             title = :title,
                             venue = :venue,
                             {$addressColumn} = :address,
@@ -188,6 +195,7 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         WHERE concert_id = :concert_id";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
+                    ':organizer_id' => $validated['organizer_id'],
                     ':artist' => $validated['artist'],
                     ':title' => $validated['title'],
                     ':venue' => $validated['venue'],
@@ -243,7 +251,7 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['edit_id'])
 
     if ($editId) {
         try {
-            $sql = "SELECT concert_id, artist, title, venue, {$addressColumn} AS address,
+            $sql = "SELECT concert_id, organizer_id, artist, title, venue, {$addressColumn} AS address,
                            image, sale_start, sale_end, description, notice
                     FROM Concert
                     WHERE concert_id = :concert_id";
@@ -265,9 +273,23 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['edit_id'])
 
 if ($dbReady) {
     try {
-        $sql = "SELECT concert_id, artist, title, venue, {$addressColumn} AS address,
-                       image, sale_start, sale_end, description, notice
-                FROM Concert
+        $stmt = $pdo->query(
+            'SELECT organizer_id, organizer_name
+             FROM Organizer
+             ORDER BY organizer_name, organizer_id'
+        );
+        $organizers = $stmt->fetchAll();
+    } catch (PDOException $exception) {
+        error_log('Fetch organizers for concert form failed: ' . $exception->getMessage());
+        $errors[] = '讀取主辦單位列表失敗，請確認已建立 Organizer 資料表。';
+    }
+
+    try {
+        $sql = "SELECT c.concert_id, c.organizer_id, c.artist, c.title, c.venue, c.{$addressColumn} AS address,
+                       c.image, c.sale_start, c.sale_end, c.description, c.notice,
+                       o.organizer_name
+                FROM Concert c
+                LEFT JOIN Organizer o ON o.organizer_id = c.organizer_id
                 ORDER BY concert_id DESC";
         $stmt = $pdo->query($sql);
         $concerts = $stmt->fetchAll();
@@ -281,6 +303,7 @@ $isEditing = is_array($editConcert);
 $formAction = $isEditing ? 'update' : 'create';
 $formTitle = $isEditing ? '編輯演唱會' : '新增演唱會';
 $formData = [
+    'organizer_id' => $isEditing ? ($editConcert['organizer_id'] ?? '') : ($_POST['organizer_id'] ?? ''),
     'artist' => $isEditing ? ($editConcert['artist'] ?? '') : ($_POST['artist'] ?? ''),
     'title' => $isEditing ? ($editConcert['title'] ?? '') : ($_POST['title'] ?? ''),
     'venue' => $isEditing ? ($editConcert['venue'] ?? '') : ($_POST['venue'] ?? ''),
@@ -328,6 +351,7 @@ $formData = [
         }
 
         .concert-form input,
+        .concert-form select,
         .concert-form textarea {
             width: 100%;
             min-height: 44px;
@@ -345,6 +369,7 @@ $formData = [
         }
 
         .concert-form input:focus,
+        .concert-form select:focus,
         .concert-form textarea:focus {
             outline: 2px solid rgba(184, 50, 50, 0.22);
             border-color: var(--accent);
@@ -436,6 +461,7 @@ $formData = [
 
         <nav class="main-nav" aria-label="管理功能">
             <a href="/concert_system/manager/dashboard.php">Dashboard</a>
+            <a href="/concert_system/manager/organizers.php">主辦單位管理</a>
             <a href="/concert_system/manager/shows.php">場次管理</a>
             <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
@@ -474,6 +500,18 @@ $formData = [
 
                     <h1><?= h($formTitle) ?></h1>
                     <div class="concert-form-grid">
+                        <label class="field-wide">
+                            主辦單位
+                            <select name="organizer_id" <?= !$dbReady ? 'disabled' : '' ?>>
+                                <option value="">未指定主辦單位</option>
+                                <?php foreach ($organizers as $organizer): ?>
+                                    <option value="<?= h($organizer['organizer_id']) ?>" <?= (string) $formData['organizer_id'] === (string) $organizer['organizer_id'] ? 'selected' : '' ?>>
+                                        <?= h($organizer['organizer_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+
                         <label>
                             藝人 / 表演者
                             <input type="text" name="artist" value="<?= h($formData['artist']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
@@ -540,6 +578,7 @@ $formData = [
                                         <th>ID</th>
                                         <th>藝人</th>
                                         <th>標題</th>
+                                        <th>主辦單位</th>
                                         <th>場館</th>
                                         <th>開賣</th>
                                         <th>截止</th>
@@ -552,6 +591,7 @@ $formData = [
                                             <td><?= h($concert['concert_id']) ?></td>
                                             <td><?= h($concert['artist']) ?></td>
                                             <td><?= h($concert['title']) ?></td>
+                                            <td><?= h($concert['organizer_name'] ?? '未指定') ?></td>
                                             <td><?= h($concert['venue']) ?></td>
                                             <td><?= h($concert['sale_start']) ?></td>
                                             <td><?= h($concert['sale_end']) ?></td>
