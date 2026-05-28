@@ -20,6 +20,15 @@ function memberDateTimeText($value) {
     return $timestamp ? date('Y/m/d H:i', $timestamp) : (string) $value;
 }
 
+function memberDateText($value) {
+    if (!$value) {
+        return '-';
+    }
+
+    $timestamp = strtotime((string) $value);
+    return $timestamp ? date('Y/m/d', $timestamp) : (string) $value;
+}
+
 function orderStatusText($status) {
     $labels = [
         'pending_payment' => '待付款',
@@ -28,6 +37,16 @@ function orderStatusText($status) {
     ];
 
     return $labels[$status] ?? (string) $status;
+}
+
+function orderStatusClass($status) {
+    $classes = [
+        'pending_payment' => 'is-pending',
+        'paid' => 'is-paid',
+        'cancelled' => 'is-cancelled',
+    ];
+
+    return $classes[$status] ?? 'is-unknown';
 }
 
 $stylePath = __DIR__ . '/../assets/css/style.css';
@@ -42,7 +61,7 @@ if ($pdo === null) {
 } else {
     try {
         $memberStatement = $pdo->prepare(
-            'SELECT user_id, username, email, password, role, created_at
+            'SELECT user_id, username, real_name, birth_date, phone_num, id_number, email, user_address
              FROM `User`
              WHERE user_id = :user_id
              LIMIT 1'
@@ -141,28 +160,32 @@ if ($pdo === null) {
 
                 <dl class="member-info-grid">
                     <div>
-                        <dt>會員編號</dt>
-                        <dd>#<?= h($member['user_id']) ?></dd>
-                    </div>
-                    <div>
                         <dt>帳號</dt>
                         <dd><?= h($member['username']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>真實姓名</dt>
+                        <dd><?= h($member['real_name']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>出生日期</dt>
+                        <dd><?= h(memberDateText($member['birth_date'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>電話</dt>
+                        <dd><?= h($member['phone_num']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>身分證字號</dt>
+                        <dd><?= h($member['id_number']) ?></dd>
                     </div>
                     <div>
                         <dt>Email</dt>
                         <dd><?= h($member['email']) ?></dd>
                     </div>
                     <div>
-                        <dt>密碼</dt>
-                        <dd class="masked-password">••••••••</dd>
-                    </div>
-                    <div>
-                        <dt>角色</dt>
-                        <dd><?= h($member['role']) ?></dd>
-                    </div>
-                    <div>
-                        <dt>建立時間</dt>
-                        <dd><?= h(memberDateTimeText($member['created_at'])) ?></dd>
+                        <dt>地址</dt>
+                        <dd><?= h($member['user_address'] ?: '-') ?></dd>
                     </div>
                 </dl>
             </section>
@@ -182,9 +205,13 @@ if ($pdo === null) {
                                 <div class="member-order-head">
                                     <div>
                                         <p>訂單 #<?= h($order['order_id']) ?></p>
-                                        <h3><?= h($order['title'] ?? '演唱會資料已移除') ?></h3>
+                                        <h3>
+                                            <a href="order_detail.php?order_id=<?= h($order['order_id']) ?>">
+                                                <?= h($order['title'] ?? '演唱會資料已移除') ?>
+                                            </a>
+                                        </h3>
                                     </div>
-                                    <span class="member-status"><?= h(orderStatusText($order['status'])) ?></span>
+                                    <span class="member-status <?= h(orderStatusClass($order['status'])) ?>"><?= h(orderStatusText($order['status'])) ?></span>
                                 </div>
 
                                 <dl class="member-order-info">
@@ -227,6 +254,13 @@ if ($pdo === null) {
                                         <dd><?= h(memberDateTimeText($order['created_at'])) ?></dd>
                                     </div>
                                 </dl>
+
+                                <div class="member-order-actions">
+                                    <a class="secondary-action" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">查看詳情</a>
+                                    <?php if ($order['status'] === 'pending_payment'): ?>
+                                        <a class="secondary-action" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
+                                    <?php endif; ?>
+                                </div>
                             </article>
                         <?php endforeach; ?>
                     </div>

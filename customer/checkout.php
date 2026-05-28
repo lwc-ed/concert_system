@@ -49,6 +49,7 @@ function fetchSelectedSeatsByNumbers($pdo, $showId, $seatNumbers)
                 s.price,
                 s.status,
                 sd.show_datetime,
+                c.concert_id,
                 c.artist,
                 c.title,
                 c.venue
@@ -79,6 +80,7 @@ function fetchFallbackSeatByZone($pdo, $showId, $zone)
             s.price,
             s.status,
             sd.show_datetime,
+            c.concert_id,
             c.artist,
             c.title,
             c.venue
@@ -109,6 +111,41 @@ function fetchSelectedSeatsByIdsForUpdate($pdo, $showId, $seatIds)
     $stmt->execute(array_merge([$showId], $seatIds));
 
     return $stmt->fetchAll();
+}
+
+function customerHasActiveOrderForShow($pdo, $customerId, $showId)
+{
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM Orders
+         WHERE user_id = ?
+           AND show_id = ?
+           AND status <> 'cancelled'"
+    );
+    $stmt->execute([$customerId, $showId]);
+
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function ticketHolderExistsForShow($pdo, $showId, $idNumber)
+{
+    $idNumber = strtoupper(trim((string) $idNumber));
+
+    if ($idNumber === '') {
+        return false;
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM Ticket t
+         INNER JOIN Orders o ON o.order_id = t.order_id
+         WHERE o.show_id = ?
+           AND o.status <> 'cancelled'
+           AND UPPER(t.id_number) = ?"
+    );
+    $stmt->execute([$showId, $idNumber]);
+
+    return (int) $stmt->fetchColumn() > 0;
 }
 
 function validatePromoCode($pdo, $code, $subtotal)
@@ -187,6 +224,9 @@ $showId = filter_input(INPUT_GET, 'show_id', FILTER_VALIDATE_INT, [
 $zone = trim((string) ($_GET['zone'] ?? ''));
 $customerId = (int) $_SESSION['customer_id'];
 $customer = null;
+$hasExistingOrder = false;
+$companionName = trim((string) ($_POST['companion_real_name'] ?? ''));
+$companionIdNumber = strtoupper(trim((string) ($_POST['companion_id_number'] ?? '')));
 
 if ($pdo === null) {
     $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
@@ -210,12 +250,26 @@ if ($pdo === null) {
             exit;
         }
 
+        $hasExistingOrder = customerHasActiveOrderForShow($pdo, $customerId, $showId);
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $seatIds = array_map('intval', $_POST['seat_ids'] ?? []);
             $seatIds = array_values(array_filter(array_unique($seatIds)));
 
             if (count($seatIds) < 1 || count($seatIds) > 2) {
                 $errors[] = '每筆訂單需選擇 1 到 2 張票。';
+            } elseif ($hasExistingOrder) {
+                $errors[] = '此會員已在同一場次建立過訂單，不能重複訂購。';
+            } elseif ($customer['id_number'] === '') {
+                $errors[] = '會員資料缺少身分證字號，請先補齊會員資料。';
+            } elseif (ticketHolderExistsForShow($pdo, $showId, $customer['id_number'])) {
+                $errors[] = '會員本人已在同一場次建立過票券，不能重複訂購。';
+            } elseif (count($seatIds) === 2 && ($companionName === '' || $companionIdNumber === '')) {
+                $errors[] = '購買兩張票時，第二位訂購人需填寫真實姓名與身分證字號。';
+            } elseif (count($seatIds) === 2 && hash_equals(strtoupper((string) $customer['id_number']), $companionIdNumber)) {
+                $errors[] = '第二位訂購人不可與會員本人使用相同身分證字號。';
+            } elseif (count($seatIds) === 2 && ticketHolderExistsForShow($pdo, $showId, $companionIdNumber)) {
+                $errors[] = '第二位訂購人已在同一場次建立過票券，不能重複訂購。';
             } else {
                 $pdo->beginTransaction();
 
@@ -239,7 +293,7 @@ if ($pdo === null) {
                     $totalPrice = max(0, $subtotal - $discount);
                     $orderStmt = $pdo->prepare(
                         "INSERT INTO Orders (user_id, show_id, promo_id, total_price, status)
-                         VALUES (?, ?, ?, ?, 'paid')"
+                         VALUES (?, ?, ?, ?, 'pending_payment')"
                     );
                     $orderStmt->execute([
                         $customerId,
@@ -253,20 +307,27 @@ if ($pdo === null) {
                         'INSERT INTO Ticket (order_id, seat_id, real_name, id_number)
                          VALUES (?, ?, ?, ?)'
                     );
-                    $seatUpdateStmt = $pdo->prepare("UPDATE Seat SET status = 'sold' WHERE seat_id = ?");
+                    $seatUpdateStmt = $pdo->prepare("UPDATE Seat SET status = 'reserved' WHERE seat_id = ?");
 
-                    foreach ($lockedSeats as $seat) {
+                    foreach ($lockedSeats as $index => $seat) {
+                        $ticketName = $index === 0
+                            ? ($customer['real_name'] ?: $customer['username'])
+                            : $companionName;
+                        $ticketIdNumber = $index === 0
+                            ? $customer['id_number']
+                            : $companionIdNumber;
+
                         $ticketStmt->execute([
                             $orderId,
                             $seat['seat_id'],
-                            $customer['real_name'] ?: $customer['username'],
-                            $customer['id_number'] ?: 'UNKNOWN',
+                            $ticketName,
+                            $ticketIdNumber,
                         ]);
                         $seatUpdateStmt->execute([$seat['seat_id']]);
                     }
 
                     $pdo->commit();
-                    header('Location: member.php');
+                    header('Location: payment.php?order_id=' . $orderId);
                     exit;
                 } catch (Throwable $exception) {
                     if ($pdo->inTransaction()) {
@@ -290,6 +351,10 @@ if ($pdo === null) {
         } elseif (count($selectedSeats) > 2) {
             $errors[] = '每筆訂單最多可購買 2 張票。';
             $selectedSeats = array_slice($selectedSeats, 0, 2);
+        }
+
+        if ($hasExistingOrder && !in_array('此會員已在同一場次建立過訂單，不能重複訂購。', $errors, true)) {
+            $errors[] = '此會員已在同一場次建立過訂單，不能重複訂購。';
         }
 
         $subtotal = array_sum(array_map(function ($seat) {
@@ -340,7 +405,7 @@ $firstSeat = $selectedSeats[0] ?? null;
             <div>
                 <p class="member-kicker">Checkout</p>
                 <h1 id="checkout-title">確認訂單</h1>
-                <span>確認座位與優惠碼後即可建立訂單。</span>
+                <span>確認演唱會資訊、座位與訂購人資料後即可建立訂單並前往付款。</span>
             </div>
         </section>
 
@@ -359,8 +424,8 @@ $firstSeat = $selectedSeats[0] ?? null;
 
             <?php if ($firstSeat): ?>
                 <div class="member-section-title">
-                    <p>Order Preview</p>
-                    <h2><?= h($firstSeat['artist']) ?></h2>
+                    <p>Concert Info</p>
+                    <h2>演唱會資訊</h2>
                 </div>
 
                 <dl class="member-order-info">
@@ -377,6 +442,10 @@ $firstSeat = $selectedSeats[0] ?? null;
                         <dd><?= h(checkoutDateTimeText($firstSeat['show_datetime'])) ?></dd>
                     </div>
                     <div>
+                        <dt>票數</dt>
+                        <dd><?= h(count($selectedSeats)) ?> 張</dd>
+                    </div>
+                    <div>
                         <dt>座位</dt>
                         <dd><?= h(implode('、', array_column($selectedSeats, 'seat_number'))) ?></dd>
                     </div>
@@ -384,17 +453,67 @@ $firstSeat = $selectedSeats[0] ?? null;
                         <dt>原價</dt>
                         <dd><?= h(formatMoney($subtotal)) ?></dd>
                     </div>
-                    <div>
-                        <dt>折扣</dt>
-                        <dd>-<?= h(formatMoney($discount)) ?></dd>
-                    </div>
-                    <div>
-                        <dt>應付金額</dt>
-                        <dd><?= h(formatMoney($totalPrice)) ?></dd>
-                    </div>
                 </dl>
 
-                <form class="auth-form" method="get" action="checkout.php">
+                <div class="checkout-info-actions">
+                    <a class="secondary-action" href="concert_detail.php?id=<?= h($firstSeat['concert_id']) ?>#show-dates">重新選擇場次</a>
+                </div>
+
+                <form id="checkout-order-form" method="post" action="checkout.php?show_id=<?= h($showId) ?>&seats=<?= h(rawurlencode(implode(',', array_column($selectedSeats, 'seat_number')))) ?>&promo_code=<?= h(rawurlencode($promoCode)) ?>">
+                    <?php foreach ($selectedSeats as $seat): ?>
+                        <input type="hidden" name="seat_ids[]" value="<?= h($seat['seat_id']) ?>">
+                    <?php endforeach; ?>
+                    <input type="hidden" name="promo_code" value="<?= h($promoCode) ?>">
+                </form>
+
+                <div class="checkout-block">
+                    <div class="member-section-title">
+                        <p>Ticket Holders</p>
+                        <h2>訂購人</h2>
+                    </div>
+
+                    <div class="checkout-holder-grid">
+                        <section class="checkout-holder-card" aria-label="第一位訂購人">
+                            <div class="checkout-holder-head">
+                                <span>第 1 張票</span>
+                                <strong><?= h($selectedSeats[0]['seat_number']) ?></strong>
+                            </div>
+                            <dl class="member-order-info checkout-holder-info">
+                                <div>
+                                    <dt>訂購人</dt>
+                                    <dd><?= h($customer['real_name'] ?: $customer['username']) ?></dd>
+                                </div>
+                                <div>
+                                    <dt>身分證字號</dt>
+                                    <dd><?= h($customer['id_number']) ?></dd>
+                                </div>
+                            </dl>
+                            <p class="checkout-note">第一位訂購人固定為登入會員，不能更改。</p>
+                        </section>
+
+                        <?php if (count($selectedSeats) === 2): ?>
+                            <section class="checkout-holder-card" aria-label="第二位訂購人">
+                                <div class="checkout-holder-head">
+                                    <span>第 2 張票</span>
+                                    <strong><?= h($selectedSeats[1]['seat_number']) ?></strong>
+                                </div>
+                                <div class="checkout-holder-fields">
+                                    <label>
+                                        <span>真實姓名</span>
+                                        <input form="checkout-order-form" type="text" name="companion_real_name" value="<?= h($companionName) ?>" placeholder="請輸入第二位訂購人姓名" required>
+                                    </label>
+                                    <label>
+                                        <span>身分證字號</span>
+                                        <input form="checkout-order-form" type="text" name="companion_id_number" value="<?= h($companionIdNumber) ?>" placeholder="A123456789" required>
+                                    </label>
+                                </div>
+                                <p class="checkout-note">第二位訂購人需填寫真實姓名與身分證字號，且同一場次不可重複建立票券。</p>
+                            </section>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <form class="auth-form checkout-promo-form" method="get" action="checkout.php">
                     <input type="hidden" name="show_id" value="<?= h($showId) ?>">
                     <input type="hidden" name="seats" value="<?= h(implode(',', array_column($selectedSeats, 'seat_number'))) ?>">
                     <?php if ($zone !== ''): ?>
@@ -408,13 +527,22 @@ $firstSeat = $selectedSeats[0] ?? null;
                     <button class="secondary-action" type="submit">套用優惠碼</button>
                 </form>
 
-                <form class="auth-form" method="post" action="checkout.php?show_id=<?= h($showId) ?>&seats=<?= h(rawurlencode(implode(',', array_column($selectedSeats, 'seat_number')))) ?>&promo_code=<?= h(rawurlencode($promoCode)) ?>">
-                    <?php foreach ($selectedSeats as $seat): ?>
-                        <input type="hidden" name="seat_ids[]" value="<?= h($seat['seat_id']) ?>">
-                    <?php endforeach; ?>
-                    <input type="hidden" name="promo_code" value="<?= h($promoCode) ?>">
-                    <button class="placeholder-link" type="submit" <?= $errors ? 'disabled' : '' ?>>建立訂單</button>
-                </form>
+                <div class="checkout-price-summary" aria-label="金額摘要">
+                    <div>
+                        <span>原價</span>
+                        <strong><?= h(formatMoney($subtotal)) ?></strong>
+                    </div>
+                    <div>
+                        <span>- 折扣金額</span>
+                        <strong><?= h(formatMoney($discount)) ?></strong>
+                    </div>
+                    <div class="checkout-price-total">
+                        <span>應付金額</span>
+                        <strong><?= h(formatMoney($totalPrice)) ?></strong>
+                    </div>
+                </div>
+
+                <button class="placeholder-link checkout-pay-button" form="checkout-order-form" type="submit" <?= $errors ? 'disabled' : '' ?>>下一步</button>
             <?php endif; ?>
         </section>
     </main>
