@@ -1,4 +1,16 @@
--- 建立資料庫
+-- 0. 環境重置 (開發階段適用)
+SET FOREIGN_KEY_CHECKS = 0; -- 暫時關閉外鍵檢查
+
+DROP TABLE IF EXISTS Ticket;
+DROP TABLE IF EXISTS Orders;
+DROP TABLE IF EXISTS Seat;
+DROP TABLE IF EXISTS ShowDate;
+DROP TABLE IF EXISTS Concert;
+DROP TABLE IF EXISTS PromoCode;
+DROP TABLE IF EXISTS User;
+
+SET FOREIGN_KEY_CHECKS = 1;
+-- 0. 建立資料庫
 CREATE DATABASE IF NOT EXISTS concert_system CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE concert_system;
 
@@ -6,7 +18,12 @@ USE concert_system;
 CREATE TABLE User (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
+    real_name VARCHAR(50) NOT NULL,
+    birth_date DATETIME NOT NULL,
+    phone_num VARCHAR(20) NOT NULL,
+    id_number VARCHAR(20) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL,
+    user_address VARCHAR(255) NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('customer', 'manager') DEFAULT 'customer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -26,7 +43,7 @@ CREATE TABLE Concert (
     artist VARCHAR(100) NOT NULL,                    -- 藝人/團體名稱
     title VARCHAR(255) NOT NULL,                     -- 演唱會完整標題
     venue VARCHAR(100) NOT NULL,                     -- 場地名稱 (如：高雄巨蛋)
-    address VARCHAR(255) NOT NULL,                   -- 場地地址
+    concert_address VARCHAR(255) NOT NULL,                   -- 場地地址
     image VARCHAR(255),                              -- 演唱會海報圖片路徑或 URL
     sale_start DATETIME NOT NULL,                    -- 啟售開始時間
     sale_end DATETIME NOT NULL,                      -- 售票截止時間
