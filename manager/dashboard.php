@@ -20,6 +20,8 @@ requireManager();
 
         <nav class="main-nav" aria-label="管理功能">
             <a href="../index.php">前台首頁</a>
+            <a href="/concert_system/manager/concerts.php">演唱會管理</a>
+            <a href="/concert_system/manager/shows.php">場次管理</a>
             <a href="change_password.php">修改密碼</a>
             <a class="login-button" href="logout.php">登出</a>
         </nav>
@@ -35,8 +37,10 @@ requireManager();
 
         <section class="placeholder-card manager-panel">
             <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
-            <p>你已登入管理員帳號。後續可在此頁加入演唱會、場次、座位、優惠碼與訂單管理功能。</p>
+            <p>你已登入管理員帳號。可從這裡進入演唱會主資料與場次日期管理。</p>
             <div class="manager-actions">
+                <a class="placeholder-link" href="/concert_system/manager/concerts.php">演唱會管理 Concert Management</a>
+                <a class="placeholder-link" href="/concert_system/manager/shows.php">場次管理 ShowDate Management</a>
                 <a class="placeholder-link" href="change_password.php">修改密碼</a>
                 <a class="secondary-action" href="../index.php">查看前台</a>
             </div>
