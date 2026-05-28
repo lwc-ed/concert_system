@@ -30,12 +30,16 @@ requireManager();
             gap: 10px;
         }
 
-        .dashboard-welcome h1 {
+        .dashboard-welcome h1,
+        .dashboard-card h3 {
             margin: 0;
         }
 
-        .dashboard-welcome p {
+        .dashboard-welcome p,
+        .dashboard-card p {
             margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
         }
 
         .dashboard-grid {
@@ -46,8 +50,8 @@ requireManager();
 
         .dashboard-card {
             display: grid;
-            gap: 8px;
-            min-height: 132px;
+            gap: 12px;
+            min-height: 150px;
             padding: 18px;
             border: 1px solid var(--line);
             border-radius: 8px;
@@ -55,16 +59,9 @@ requireManager();
         }
 
         .dashboard-card h3 {
-            margin: 0;
             color: var(--ink);
             font-size: 22px;
             line-height: 1.25;
-        }
-
-        .dashboard-card p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.6;
         }
 
         .dashboard-actions {
@@ -92,9 +89,8 @@ requireManager();
         <nav class="main-nav" aria-label="管理功能">
             <a href="/concert_system/manager/concerts.php">演唱會管理</a>
             <a href="/concert_system/manager/shows.php">場次管理</a>
+            <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/promocodes.php">優惠碼管理</a>
-            <a href="change_password.php">修改密碼</a>
-            <a class="login-button" href="logout.php">登出</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
             <a class="login-button" href="/concert_system/manager/logout.php">登出</a>
         </nav>
@@ -109,20 +105,11 @@ requireManager();
             <a class="secondary-action" href="../index.php">查看前台</a>
         </div>
 
-        <section class="placeholder-card manager-panel">
-            <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
-            <p>你已登入管理員帳號，可以管理演唱會、場次、優惠碼與後續訂單資料。</p>
-            <div class="manager-actions">
-                <a class="placeholder-link" href="/concert_system/manager/concerts.php">演唱會管理 Concert Management</a>
-                <a class="placeholder-link" href="/concert_system/manager/shows.php">場次管理 ShowDate Management</a>
-                <a class="placeholder-link" href="/concert_system/manager/promocodes.php">優惠碼管理 Promo Code Management</a>
-                <a class="placeholder-link" href="change_password.php">修改密碼</a>
-                <a class="secondary-action" href="../index.php">查看前台</a>
         <section class="placeholder-card dashboard-panel">
             <div class="dashboard-layout">
                 <div class="dashboard-welcome">
                     <h1>歡迎，<?= h($_SESSION['manager_username'] ?? 'manager') ?></h1>
-                    <p>你已登入管理員帳號。可從這裡進入演唱會主資料與場次日期管理。</p>
+                    <p>你已登入管理員帳號。可從這裡進入演唱會、場次、座位票價、優惠碼與帳號安全管理。</p>
                 </div>
 
                 <div class="dashboard-grid">
@@ -143,6 +130,26 @@ requireManager();
                         </div>
                         <div class="dashboard-actions">
                             <a class="placeholder-link" href="/concert_system/manager/shows.php">進入管理</a>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-card">
+                        <div>
+                            <h3>座位與票價管理</h3>
+                            <p>管理各場次座位、票價、座位狀態與座位圖表。</p>
+                        </div>
+                        <div class="dashboard-actions">
+                            <a class="placeholder-link" href="/concert_system/manager/seats.php">進入管理</a>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-card">
+                        <div>
+                            <h3>優惠碼管理</h3>
+                            <p>管理促銷碼、折扣金額與啟用狀態。</p>
+                        </div>
+                        <div class="dashboard-actions">
+                            <a class="placeholder-link" href="/concert_system/manager/promocodes.php">進入管理</a>
                         </div>
                     </article>
 

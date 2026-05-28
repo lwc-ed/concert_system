@@ -389,6 +389,8 @@ $formStatus = $isEditing ? ($editShow['status'] ?? 'available') : ($_POST['statu
 
         <nav class="main-nav" aria-label="管理功能">
             <a href="/concert_system/manager/dashboard.php">Dashboard</a>
+            <a href="/concert_system/manager/concerts.php">演唱會管理</a>
+            <a href="/concert_system/manager/seats.php">座位管理</a>
             <a href="/concert_system/manager/change_password.php">修改密碼</a>
             <a class="login-button" href="/concert_system/manager/logout.php">登出</a>
         </nav>
