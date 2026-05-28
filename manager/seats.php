@@ -40,6 +40,7 @@ $notice = '';
 $shows = [];
 $seats = [];
 $seatCharts = [];
+$seatZones = [];
 $editSeat = null;
 $dbReady = $pdo instanceof PDO;
 
@@ -135,9 +136,34 @@ function validateBatchForm($postData)
     return [
         'errors' => $errors,
         'show_id' => $showId,
-        'seat_prefix' => $seatPrefix,
+        'seat_prefix' => rtrim($seatPrefix, '_'),
         'start_no' => $startNo,
         'end_no' => $endNo,
+        'price' => $price,
+    ];
+}
+
+function validateZonePriceForm($postData)
+{
+    $zoneKey = trim((string) ($postData['zone_key'] ?? ''));
+    $zoneParts = explode('|', $zoneKey, 2);
+    $showId = positiveInt($zoneParts[0] ?? null);
+    $seatZone = trim((string) ($zoneParts[1] ?? ''));
+    $price = validPrice($postData['zone_price'] ?? '');
+    $errors = [];
+
+    if (!$showId || $seatZone === '') {
+        $errors[] = '請選擇要修改票價的場次與座位區。';
+    }
+
+    if ($price === false) {
+        $errors[] = '新票價必須是大於或等於 0 的數字。';
+    }
+
+    return [
+        'errors' => $errors,
+        'show_id' => $showId,
+        'seat_zone' => $seatZone,
         'price' => $price,
     ];
 }
@@ -198,7 +224,8 @@ if (isset($_GET['message'])) {
         'created' => '座位新增成功。',
         'updated' => '座位更新成功。',
         'deleted' => '座位刪除成功。',
-        'batch_created' => '批次座位新增完成。',
+        'batch_created' => '座位區新增完成。',
+        'zone_price_updated' => '座位區票價更新成功。',
     ];
     $notice = $messages[$_GET['message']] ?? '';
 }
@@ -259,7 +286,7 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 for ($number = $validated['start_no']; $number <= $validated['end_no']; $number++) {
-                    $seatNumber = $validated['seat_prefix'] . $number;
+                    $seatNumber = $validated['seat_prefix'] . '_' . $number . '號';
 
                     if (seatExists($pdo, $validated['show_id'], $seatNumber)) {
                         $skippedCount++;
@@ -288,6 +315,35 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 error_log('Batch create seats failed: ' . $exception->getMessage());
                 $errors[] = '批次新增座位失敗，請稍後再試。';
+            }
+        }
+    } elseif ($action === 'update_zone_price') {
+        $validated = validateZonePriceForm($_POST);
+        $errors = array_merge($errors, $validated['errors']);
+
+        if (!$errors) {
+            try {
+                $stmt = $pdo->prepare(
+                    "UPDATE Seat
+                     SET price = :price
+                     WHERE show_id = :show_id
+                       AND SUBSTRING_INDEX(seat_number, '_', 1) = :seat_zone"
+                );
+                $stmt->execute([
+                    ':price' => $validated['price'],
+                    ':show_id' => $validated['show_id'],
+                    ':seat_zone' => $validated['seat_zone'],
+                ]);
+
+                header(
+                    'Location: /concert_system/manager/seats.php?message=zone_price_updated'
+                    . '&updated=' . (int) $stmt->rowCount()
+                    . '&show_id=' . (int) $validated['show_id']
+                );
+                exit;
+            } catch (PDOException $exception) {
+                error_log('Update zone price failed: ' . $exception->getMessage());
+                $errors[] = '修改座位區票價失敗，請稍後再試。';
             }
         }
     } elseif ($action === 'update') {
@@ -371,6 +427,10 @@ if ($dbReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($notice !== '' && isset($_GET['created'], $_GET['skipped'])) {
     $notice .= ' 新增 ' . (int) $_GET['created'] . ' 筆，略過重複座位 ' . (int) $_GET['skipped'] . ' 筆。';
+}
+
+if ($notice !== '' && isset($_GET['updated'])) {
+    $notice .= ' 共更新 ' . (int) $_GET['updated'] . ' 個座位。';
 }
 
 // Load show options for filters and forms.
@@ -505,6 +565,21 @@ foreach ($seatCharts as $chartKey => $chart) {
     }
 }
 
+foreach ($seatCharts as $chart) {
+    foreach ($chart['zones'] as $zoneName => $zone) {
+        $zoneKey = $chart['show_id'] . '|' . $zoneName;
+        $firstSeat = $zone['seats'][0] ?? null;
+        $seatZones[$zoneKey] = [
+            'show_id' => $chart['show_id'],
+            'concert_title' => $chart['concert_title'],
+            'show_datetime' => $chart['show_datetime'],
+            'zone' => $zoneName,
+            'price' => $firstSeat['price'] ?? '',
+            'count' => count($zone['seats']),
+        ];
+    }
+}
+
 $isEditing = is_array($editSeat);
 $singleFormAction = $isEditing ? 'update' : 'create_single';
 $singleFormTitle = $isEditing ? '編輯座位' : '新增單一座位';
@@ -521,6 +596,11 @@ $batchFormData = [
     'start_no' => $_POST['start_no'] ?? '1',
     'end_no' => $_POST['end_no'] ?? '20',
     'price' => $_POST['price'] ?? '',
+];
+
+$zonePriceFormData = [
+    'zone_key' => $_POST['zone_key'] ?? '',
+    'zone_price' => $_POST['zone_price'] ?? '',
 ];
 ?>
 <!doctype html>
@@ -557,6 +637,10 @@ $batchFormData = [
         .filter-form {
             grid-template-columns: minmax(260px, 1fr) auto auto;
             align-items: end;
+        }
+
+        .field-wide {
+            grid-column: 1 / -1;
         }
 
         label {
@@ -1054,7 +1138,7 @@ $batchFormData = [
                 <div class="sub-panel">
                     <form class="seat-form" method="post" action="/concert_system/manager/seats.php">
                         <input type="hidden" name="action" value="create_batch">
-                        <h1>批次新增座位</h1>
+                        <h1>新增座位區</h1>
                         <div class="batch-form-grid">
                             <label>
                                 場次
@@ -1069,8 +1153,8 @@ $batchFormData = [
                             </label>
 
                             <label>
-                                座位前綴
-                                <input type="text" name="seat_prefix" value="<?= h($batchFormData['seat_prefix']) ?>" placeholder="A" required <?= !$dbReady ? 'disabled' : '' ?>>
+                                座位區名稱
+                                <input type="text" name="seat_prefix" value="<?= h($batchFormData['seat_prefix']) ?>" placeholder="A區 / 搖滾區" required <?= !$dbReady ? 'disabled' : '' ?>>
                             </label>
 
                             <label>
@@ -1090,7 +1174,37 @@ $batchFormData = [
                         </div>
 
                         <div class="seat-actions">
-                            <button class="placeholder-link" type="submit" <?= !$dbReady ? 'disabled' : '' ?>>批次新增</button>
+                            <button class="placeholder-link" type="submit" <?= !$dbReady ? 'disabled' : '' ?>>新增座位區</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="sub-panel">
+                    <form class="seat-form" method="post" action="/concert_system/manager/seats.php">
+                        <input type="hidden" name="action" value="update_zone_price">
+                        <h1>設定 / 修改座位區票價</h1>
+                        <div class="batch-form-grid">
+                            <label class="field-wide">
+                                場次與座位區
+                                <select name="zone_key" required <?= !$dbReady ? 'disabled' : '' ?>>
+                                    <option value="">請選擇場次與座位區</option>
+                                    <?php foreach ($seatZones as $zone): ?>
+                                        <?php $zoneKey = $zone['show_id'] . '|' . $zone['zone']; ?>
+                                        <option value="<?= h($zoneKey) ?>" <?= (string) $zonePriceFormData['zone_key'] === (string) $zoneKey ? 'selected' : '' ?>>
+                                            #<?= h($zone['show_id']) ?> <?= h($zone['concert_title']) ?> / <?= h($zone['zone']) ?> / <?= h($zone['count']) ?> 席 / 目前 $<?= h($zone['price']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label>
+                                新票價
+                                <input type="number" name="zone_price" min="0" step="0.01" value="<?= h($zonePriceFormData['zone_price']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
+                            </label>
+                        </div>
+
+                        <div class="seat-actions">
+                            <button class="placeholder-link" type="submit" <?= !$dbReady ? 'disabled' : '' ?>>更新座位區票價</button>
                         </div>
                     </form>
                 </div>
