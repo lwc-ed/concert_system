@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../includes/db_config.php';
+require_once __DIR__ . '/../includes/order_expiration.php';
 
 if (!isset($_SESSION['customer_id'])) {
     header('Location: login.php?redirect=member.php');
@@ -61,6 +62,8 @@ if ($pdo === null) {
     $pageError = '目前無法連線到資料庫，請確認 MAMP / MySQL 已啟動，且 includes/db_config.php 設定正確。';
 } else {
     try {
+        cancelExpiredPendingOrders($pdo, $customerId);
+
         $memberStatement = $pdo->prepare(
             'SELECT user_id, username, real_name, birth_date, phone_num, id_number, email, user_address, role, created_at
              FROM `User`
@@ -216,6 +219,12 @@ if ($pdo === null) {
                                         </h3>
                                     </div>
                                     <span class="member-status <?= h(orderStatusClass($order['status'])) ?>"><?= h(orderStatusText($order['status'])) ?></span>
+                                    <?php if ($order['status'] === 'pending_payment'): ?>
+                                        <?php $orderSecondsRemaining = orderPaymentSecondsRemaining($order['created_at']); ?>
+                                        <span class="member-status is-pending" data-order-countdown data-order-id="<?= h($order['order_id']) ?>" data-seconds="<?= h($orderSecondsRemaining) ?>">
+                                            付款倒數 <strong data-countdown-text><?= h(gmdate('i:s', $orderSecondsRemaining)) ?></strong>
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
 
                                 <dl class="member-order-info">
@@ -272,5 +281,44 @@ if ($pdo === null) {
             </section>
         <?php endif; ?>
     </main>
+    <script>
+        document.querySelectorAll('[data-order-countdown]').forEach((timer) => {
+            let seconds = Number.parseInt(timer.dataset.seconds || '0', 10);
+            const orderId = timer.dataset.orderId;
+            const text = timer.querySelector('[data-countdown-text]');
+
+            function render() {
+                const minutes = Math.floor(Math.max(seconds, 0) / 60).toString().padStart(2, '0');
+                const remainSeconds = (Math.max(seconds, 0) % 60).toString().padStart(2, '0');
+                if (text) {
+                    text.textContent = `${minutes}:${remainSeconds}`;
+                }
+            }
+
+            async function expireOrder() {
+                if (!orderId) {
+                    window.location.reload();
+                    return;
+                }
+
+                await fetch('expire_order.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({order_id: orderId}),
+                }).catch(() => null);
+                window.location.reload();
+            }
+
+            render();
+            const intervalId = window.setInterval(() => {
+                seconds -= 1;
+                render();
+                if (seconds <= 0) {
+                    window.clearInterval(intervalId);
+                    expireOrder();
+                }
+            }, 1000);
+        });
+    </script>
 </body>
 </html>

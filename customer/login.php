@@ -36,12 +36,18 @@ if (isset($_SESSION['customer_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $account = trim($_POST['account'] ?? '');
     $password = (string) ($_POST['password'] ?? '');
+    $captcha = strtoupper(trim((string) ($_POST['captcha'] ?? '')));
+    $expectedCaptcha = strtoupper((string) ($_SESSION['manager_login_captcha'] ?? ''));
 
     if ($pdo === null) {
         $loginError = '目前無法連線到資料庫，請稍後再試。';
     } elseif ($account === '' || $password === '') {
         $loginError = '請輸入帳號與密碼。';
+    } elseif ($captcha === '' || $expectedCaptcha === '' || !hash_equals($expectedCaptcha, $captcha)) {
+        $loginError = '驗證碼錯誤，請重新輸入。';
+        unset($_SESSION['manager_login_captcha']);
     } else {
+        unset($_SESSION['manager_login_captcha']);
         $statement = $pdo->prepare(
             'SELECT user_id, username, email, password, role
              FROM `User`
@@ -120,6 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <label for="password">密碼</label>
                 <input id="password" name="password" type="password" placeholder="請輸入密碼" autocomplete="current-password" required>
+
+                <label for="captcha">驗證碼</label>
+                <div class="captcha-row">
+                    <img src="../manager/captcha.php?v=<?= h((string) time()) ?>" alt="登入驗證碼">
+                    <input id="captcha" name="captcha" type="text" maxlength="5" autocomplete="off" placeholder="請輸入驗證碼" required>
+                </div>
 
                 <button class="auth-submit" type="submit">登入</button>
             </form>
