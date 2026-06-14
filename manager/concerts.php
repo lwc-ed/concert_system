@@ -329,7 +329,8 @@ $formData = [
 
         .concerts-panel {
             width: 100%;
-            max-width: none;
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
         .concerts-layout,
@@ -396,7 +397,7 @@ $formData = [
 
         .concert-table {
             width: 100%;
-            min-width: 980px;
+            min-width: 800px;
             border-collapse: collapse;
         }
 
@@ -514,22 +515,22 @@ $formData = [
 
                         <label>
                             藝人 / 表演者
-                            <input type="text" name="artist" value="<?= h($formData['artist']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
+                            <input type="text" name="artist" value="<?= h($formData['artist']) ?>" required maxlength="100" <?= !$dbReady ? 'disabled' : '' ?>>
                         </label>
 
                         <label>
                             演唱會標題
-                            <input type="text" name="title" value="<?= h($formData['title']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
+                            <input type="text" name="title" value="<?= h($formData['title']) ?>" required maxlength="150" <?= !$dbReady ? 'disabled' : '' ?>>
                         </label>
 
                         <label>
                             演出場館
-                            <input type="text" name="venue" value="<?= h($formData['venue']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
+                            <input type="text" name="venue" value="<?= h($formData['venue']) ?>" required maxlength="100" <?= !$dbReady ? 'disabled' : '' ?>>
                         </label>
 
                         <label>
                             場館地址
-                            <input type="text" name="address" value="<?= h($formData['address']) ?>" required <?= !$dbReady ? 'disabled' : '' ?>>
+                            <input type="text" name="address" value="<?= h($formData['address']) ?>" required maxlength="255" <?= !$dbReady ? 'disabled' : '' ?>>
                         </label>
 
                         <label>
@@ -544,17 +545,17 @@ $formData = [
 
                         <label class="field-wide">
                             海報圖片路徑
-                            <input type="text" name="image" value="<?= h($formData['image']) ?>" placeholder="assets/images/concert-1.png" <?= !$dbReady ? 'disabled' : '' ?>>
+                            <input type="text" name="image" value="<?= h($formData['image']) ?>" placeholder="assets/images/concert-1.png" maxlength="255" <?= !$dbReady ? 'disabled' : '' ?>>
                         </label>
 
                         <label class="field-wide">
                             演唱會介紹
-                            <textarea name="description" <?= !$dbReady ? 'disabled' : '' ?>><?= h($formData['description']) ?></textarea>
+                            <textarea name="description" maxlength="2000" <?= !$dbReady ? 'disabled' : '' ?>><?= h($formData['description']) ?></textarea>
                         </label>
 
                         <label class="field-wide">
                             購票注意事項
-                            <textarea name="notice" <?= !$dbReady ? 'disabled' : '' ?>><?= h($formData['notice']) ?></textarea>
+                            <textarea name="notice" maxlength="1000" <?= !$dbReady ? 'disabled' : '' ?>><?= h($formData['notice']) ?></textarea>
                         </label>
                     </div>
 
