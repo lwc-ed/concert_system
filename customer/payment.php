@@ -168,33 +168,35 @@ if ($pdo === null) {
                         throw new RuntimeException('找不到這筆訂單，或這筆訂單不屬於目前登入會員。');
                     }
 
-                    if ($lockedOrder['status'] === 'cancelled') {
-                        throw new RuntimeException('此訂單已取消，無法付款。');
+                    if ($lockedOrder['status'] !== 'pending_payment') {
+                        throw new RuntimeException('此訂單已取消或完成付款，無法再次付款。');
                     }
 
-                    if ($lockedOrder['status'] === 'pending_payment') {
-                        $orderUpdateStmt = $pdo->prepare(
-                            "UPDATE Orders
-                             SET status = 'paid',
-                                 payment_method = ?,
-                                 delivery_method = ?
-                             WHERE order_id = ?
-                               AND status = 'pending_payment'"
-                        );
-                        $orderUpdateStmt->execute([
-                            $selectedPaymentMethod,
-                            $selectedDeliveryMethod,
-                            $orderId,
-                        ]);
+                    $orderUpdateStmt = $pdo->prepare(
+                        "UPDATE Orders
+                         SET status = 'paid',
+                             payment_method = ?,
+                             delivery_method = ?
+                         WHERE order_id = ?
+                           AND status = 'pending_payment'"
+                    );
+                    $orderUpdateStmt->execute([
+                        $selectedPaymentMethod,
+                        $selectedDeliveryMethod,
+                        $orderId,
+                    ]);
 
-                        $seatUpdateStmt = $pdo->prepare(
-                            "UPDATE Seat s
-                             INNER JOIN Ticket t ON t.seat_id = s.seat_id
-                             SET s.status = 'sold'
-                             WHERE t.order_id = ?"
-                        );
-                        $seatUpdateStmt->execute([$orderId]);
+                    if ($orderUpdateStmt->rowCount() !== 1) {
+                        throw new RuntimeException('訂單狀態已變更，無法完成付款。');
                     }
+
+                    $seatUpdateStmt = $pdo->prepare(
+                        "UPDATE Seat s
+                         INNER JOIN Ticket t ON t.seat_id = s.seat_id
+                         SET s.status = 'sold'
+                         WHERE t.order_id = ?"
+                    );
+                    $seatUpdateStmt->execute([$orderId]);
 
                     $pdo->commit();
                     header('Location: payment.php?order_id=' . $orderId . '&paid=1');

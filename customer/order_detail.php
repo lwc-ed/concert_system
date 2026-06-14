@@ -135,57 +135,6 @@ function fetchOrderTickets($pdo, $orderId)
     return $stmt->fetchAll();
 }
 
-function cancelOrder($pdo, $orderId, $customerId)
-{
-    $pdo->beginTransaction();
-
-    try {
-        $orderStmt = $pdo->prepare(
-            'SELECT order_id, status
-             FROM Orders
-             WHERE order_id = ?
-               AND user_id = ?
-             FOR UPDATE'
-        );
-        $orderStmt->execute([$orderId, $customerId]);
-        $order = $orderStmt->fetch();
-
-        if (!$order) {
-            throw new RuntimeException('找不到這筆訂單，或這筆訂單不屬於目前登入會員。');
-        }
-
-        if ($order['status'] === 'cancelled') {
-            throw new RuntimeException('此訂單已取消。');
-        }
-
-        $seatStmt = $pdo->prepare(
-            "UPDATE Seat s
-             INNER JOIN Ticket t ON t.seat_id = s.seat_id
-             SET s.status = 'available'
-             WHERE t.order_id = ?"
-        );
-        $seatStmt->execute([$orderId]);
-
-        $ticketStmt = $pdo->prepare('DELETE FROM Ticket WHERE order_id = ?');
-        $ticketStmt->execute([$orderId]);
-
-        $updateStmt = $pdo->prepare(
-            "UPDATE Orders
-             SET status = 'cancelled'
-             WHERE order_id = ?"
-        );
-        $updateStmt->execute([$orderId]);
-
-        $pdo->commit();
-    } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-
-        throw $exception;
-    }
-}
-
 $stylePath = __DIR__ . '/../assets/css/style.css';
 $styleVersion = file_exists($stylePath) ? filemtime($stylePath) : time();
 $customerId = (int) $_SESSION['customer_id'];
@@ -196,7 +145,6 @@ $order = null;
 $tickets = [];
 $errors = [];
 $notice = '';
-$showCancelConfirm = false;
 
 if ($pdo === null) {
     $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
@@ -207,15 +155,12 @@ if ($pdo === null) {
         cancelExpiredPendingOrders($pdo, $customerId);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
-            // Two-step cancellation: first POST without confirm will show confirmation UI.
-            // Only perform cancellation when user submits with confirm=1.
-            if (isset($_POST['confirm']) && $_POST['confirm'] === '1') {
-                cancelOrder($pdo, $orderId, $customerId);
+            if (cancelPendingOrderAndReleaseSeats($pdo, $orderId, $customerId)) {
                 header('Location: order_detail.php?order_id=' . $orderId . '&cancelled=1');
                 exit;
-            } else {
-                $showCancelConfirm = true;
             }
+
+            $errors[] = '只有待付款訂單可以取消。';
         }
 
         if (isset($_GET['cancelled']) && $_GET['cancelled'] === '1') {
@@ -229,8 +174,9 @@ if ($pdo === null) {
         } else {
             $tickets = fetchOrderTickets($pdo, $orderId);
         }
-    } catch (PDOException $exception) {
-        $errors[] = '讀取訂單詳情失敗：' . $exception->getMessage();
+    } catch (Throwable $exception) {
+        error_log('Order detail action failed: ' . $exception->getMessage());
+        $errors[] = '處理訂單時發生錯誤，請稍後再試。';
     }
 }
 ?>
@@ -387,21 +333,11 @@ if ($pdo === null) {
                     <?php if ($order['status'] === 'pending_payment'): ?>
                         <a class="placeholder-link" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
                     <?php endif; ?>
-                    <?php if ($order['status'] !== 'cancelled'): ?>
-                        <?php if ($showCancelConfirm): ?>
-                            <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" aria-label="取消訂單確認表單">
-                                <input type="hidden" name="action" value="cancel_order">
-                                <input type="hidden" name="confirm" value="1">
-                                <p>您確定要取消此訂單嗎？此操作會釋放座位且無法復原。</p>
-                                <button class="secondary-action danger-action" type="submit">是，我要取消訂單</button>
-                                <a class="secondary-action" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">否，返回訂單</a>
-                            </form>
-                        <?php else: ?>
-                            <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form">
-                                <input type="hidden" name="action" value="cancel_order">
-                                <button class="secondary-action danger-action" type="submit">取消訂票</button>
-                            </form>
-                        <?php endif; ?>
+                    <?php if ($order['status'] === 'pending_payment'): ?>
+                        <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" onsubmit="return confirm('確定要取消此未付款訂單嗎？');">
+                            <input type="hidden" name="action" value="cancel_order">
+                            <button class="secondary-action danger-action" type="submit">取消訂票</button>
+                        </form>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>

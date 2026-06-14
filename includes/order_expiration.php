@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/order_helpers.php';
+
 const ORDER_PAYMENT_TIMEOUT_SECONDS = 600;
 const ORDER_PAYMENT_TIMEZONE = 'Asia/Taipei';
 
@@ -27,32 +29,11 @@ function orderPaymentSecondsRemaining($createdAt)
     return max(0, $deadlineTimestamp - $nowTimestamp);
 }
 
-function releaseReservedSeatsForOrders($connection, $orderIds)
-{
-    if (!$orderIds) {
-        return 0;
-    }
-
-    $placeholders = implode(', ', array_fill(0, count($orderIds), '?'));
-    $stmt = $connection->prepare(
-        "UPDATE Seat seat
-         INNER JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
-         SET seat.status = 'available'
-         WHERE ticket.order_id IN ($placeholders)
-           AND seat.status = 'reserved'"
-    );
-    $stmt->execute(array_values($orderIds));
-
-    return $stmt->rowCount();
-}
-
 function cancelExpiredPendingOrders($connection, $customerId = null)
 {
     $cancelledCount = 0;
 
     try {
-        $connection->beginTransaction();
-
         $params = [];
         $customerFilter = '';
 
@@ -66,28 +47,17 @@ function cancelExpiredPendingOrders($connection, $customerId = null)
              FROM Orders
              WHERE status = 'pending_payment'
                AND created_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-               $customerFilter
-             FOR UPDATE"
+               $customerFilter"
         );
         $stmt->execute($params);
         $orderIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-        if ($orderIds) {
-            $placeholders = implode(', ', array_fill(0, count($orderIds), '?'));
-            $stmt = $connection->prepare(
-                "UPDATE Orders
-                 SET status = 'cancelled'
-                 WHERE status = 'pending_payment'
-                   AND order_id IN ($placeholders)"
-            );
-            $stmt->execute($orderIds);
-            $cancelledCount = $stmt->rowCount();
-
-            releaseReservedSeatsForOrders($connection, $orderIds);
+        foreach ($orderIds as $orderId) {
+            if (cancelPendingOrderAndReleaseSeats($connection, $orderId, $customerId, true)) {
+                $cancelledCount++;
+            }
         }
-
-        $connection->commit();
-    } catch (PDOException $exception) {
+    } catch (Throwable $exception) {
         if ($connection->inTransaction()) {
             $connection->rollBack();
         }
@@ -101,46 +71,14 @@ function cancelExpiredPendingOrders($connection, $customerId = null)
 
 function cancelExpiredPendingOrderById($connection, $orderId, $customerId = null)
 {
-    $cancelled = false;
-
     try {
-        $connection->beginTransaction();
-
-        $params = [(int) $orderId];
-        $customerFilter = '';
-
-        if ($customerId !== null) {
-            $customerFilter = ' AND user_id = ?';
-            $params[] = (int) $customerId;
-        }
-
-        $stmt = $connection->prepare(
-            "SELECT order_id, status, created_at
-             FROM Orders
-             WHERE order_id = ?
-               $customerFilter
-             FOR UPDATE"
+        return cancelPendingOrderAndReleaseSeats(
+            $connection,
+            (int) $orderId,
+            $customerId === null ? null : (int) $customerId,
+            true
         );
-        $stmt->execute($params);
-        $order = $stmt->fetch();
-
-        if ($order
-            && $order['status'] === 'pending_payment'
-            && orderPaymentSecondsRemaining($order['created_at']) <= 0
-        ) {
-            $updateStmt = $connection->prepare(
-                "UPDATE Orders
-                 SET status = 'cancelled'
-                 WHERE order_id = ?
-                   AND status = 'pending_payment'"
-            );
-            $updateStmt->execute([(int) $orderId]);
-            releaseReservedSeatsForOrders($connection, [(int) $orderId]);
-            $cancelled = $updateStmt->rowCount() > 0;
-        }
-
-        $connection->commit();
-    } catch (PDOException $exception) {
+    } catch (Throwable $exception) {
         if ($connection->inTransaction()) {
             $connection->rollBack();
         }
@@ -149,5 +87,4 @@ function cancelExpiredPendingOrderById($connection, $orderId, $customerId = null
         throw $exception;
     }
 
-    return $cancelled;
 }

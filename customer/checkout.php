@@ -334,7 +334,18 @@ if ($pdo === null) {
                         $pdo->rollBack();
                     }
 
-                    $errors[] = $exception->getMessage();
+                    if ($exception instanceof PDOException
+                        && ($exception->getCode() === '23000'
+                            || (int) ($exception->errorInfo[1] ?? 0) === 1062)
+                    ) {
+                        error_log('Checkout duplicate seat failed: ' . $exception->getMessage());
+                        $errors[] = '此座位已被其他訂單保留或售出，請重新選擇座位。';
+                    } elseif ($exception instanceof PDOException) {
+                        error_log('Checkout order failed: ' . $exception->getMessage());
+                        $errors[] = '建立訂單時發生錯誤，請稍後再試。';
+                    } else {
+                        $errors[] = $exception->getMessage();
+                    }
                 }
             }
         }
@@ -369,7 +380,8 @@ if ($pdo === null) {
             $notice = '優惠碼已套用：' . $promo['code_name'];
         }
     } catch (PDOException $exception) {
-        $errors[] = '讀取訂票資料失敗：' . $exception->getMessage();
+        error_log('Checkout page failed: ' . $exception->getMessage());
+        $errors[] = '讀取訂票資料失敗，請稍後再試。';
     }
 }
 
