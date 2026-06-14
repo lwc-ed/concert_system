@@ -113,5 +113,6 @@ $styleVersion = filemtime(__DIR__ . '/assets/css/style.css');
     </footer>
 
     <script src="assets/js/homepage.js"></script>
+    <script src="assets/js/easter_egg.js"></script>
 </body>
 </html>

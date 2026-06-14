@@ -10,6 +10,69 @@
     --shadow: 0 18px 40px rgba(31, 35, 40, 0.14);
 }
 
+.cake-rain {
+    position: fixed;
+    top: -80px;
+    z-index: 9999;
+    pointer-events: none;
+    user-select: none;
+    animation-name: cake-fall;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    filter: drop-shadow(0 8px 10px rgba(17, 19, 24, 0.18));
+}
+
+.dino-runner {
+    position: fixed;
+    left: -90px;
+    bottom: 24px;
+    z-index: 10000;
+    pointer-events: none;
+    user-select: none;
+    font-size: 58px;
+    line-height: 1;
+    animation: dino-run 4.2s ease-in-out forwards;
+    filter: drop-shadow(0 8px 10px rgba(17, 19, 24, 0.2));
+}
+
+@keyframes cake-fall {
+    0% {
+        transform: translate3d(0, -80px, 0) rotate(0deg);
+        opacity: 0;
+    }
+
+    8% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate3d(var(--cake-drift, 0), 112vh, 0) rotate(var(--cake-spin, 720deg));
+        opacity: 0;
+    }
+}
+
+@keyframes dino-run {
+    0% {
+        transform: translateX(0) translateY(0) rotate(-4deg);
+    }
+
+    18% {
+        transform: translateX(18vw) translateY(-10px) rotate(5deg);
+    }
+
+    38% {
+        transform: translateX(38vw) translateY(0) rotate(-5deg);
+    }
+
+    62% {
+        transform: translateX(62vw) translateY(-8px) rotate(4deg);
+    }
+
+    100% {
+        transform: translateX(calc(100vw + 160px)) translateY(0) rotate(0deg);
+    }
+}
+
 * {
     box-sizing: border-box;
 }
