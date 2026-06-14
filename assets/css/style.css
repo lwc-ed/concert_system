@@ -772,6 +772,15 @@ a {
     color: var(--muted);
 }
 
+.member-confirm-password {
+    display: grid;
+    gap: 12px;
+}
+
+.member-confirm-password[hidden] {
+    display: none;
+}
+
 .member-edit-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
