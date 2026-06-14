@@ -146,7 +146,16 @@ if ($pdo === null) {
     try {
         cancelExpiredPendingOrders($pdo, $customerId);
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'abandon_order') {
+            if (abandonPendingOrderAndReleaseSeats($pdo, $orderId, $customerId)) {
+                header('Location: ../index.php');
+                exit;
+            }
+
+            $errors[] = '此訂單目前無法放棄，請確認訂單是否仍為待付款狀態。';
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'complete_payment') {
             $allowedPaymentMethods = ['credit_card', 'atm_transfer'];
             $allowedDeliveryMethods = ['ibon', 'venue_pickup'];
 
@@ -252,8 +261,9 @@ if ($pdo === null) {
         ) {
             $selectedDeliveryMethod = $order['delivery_method'];
         }
-    } catch (PDOException $exception) {
-        $errors[] = '讀取付款資料失敗：' . $exception->getMessage();
+    } catch (Throwable $exception) {
+        error_log('Payment action failed: ' . $exception->getMessage());
+        $errors[] = '處理付款資料時發生錯誤，請稍後再試。';
     }
 }
 ?>
@@ -368,6 +378,7 @@ if ($pdo === null) {
                         付款倒數：<strong data-countdown-text><?= h(gmdate('i:s', $paymentSecondsRemaining)) ?></strong>
                     </div>
                     <form method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" class="payment-choice-form">
+                        <input type="hidden" name="action" value="complete_payment">
                         <fieldset class="payment-choice-group">
                             <legend>付款方式</legend>
 
@@ -431,7 +442,11 @@ if ($pdo === null) {
                         <div class="payment-actions">
                             <button class="placeholder-link payment-submit-button" type="submit">完成付款</button>
                             <a class="secondary-action payment-delay-button" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">延後付款</a>
+                            <button class="secondary-action danger-action payment-abandon-button" type="submit" form="abandon-order-form">放棄購票</button>
                         </div>
+                    </form>
+                    <form id="abandon-order-form" method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" onsubmit="return confirm('確定要放棄購票嗎？訂單與訂票資料將永久刪除。');">
+                        <input type="hidden" name="action" value="abandon_order">
                     </form>
                 <?php else: ?>
                     <div class="payment-actions">
