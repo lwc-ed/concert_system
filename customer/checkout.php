@@ -113,6 +113,23 @@ function fetchSelectedSeatsByIdsForUpdate($pdo, $showId, $seatIds)
     return $stmt->fetchAll();
 }
 
+function deleteCancelledTicketReferencesForSeats($pdo, $seatIds)
+{
+    if (!$seatIds) {
+        return;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($seatIds), '?'));
+    $stmt = $pdo->prepare(
+        "DELETE t
+         FROM Ticket t
+         INNER JOIN Orders o ON o.order_id = t.order_id
+         WHERE o.status = 'cancelled'
+           AND t.seat_id IN ($placeholders)"
+    );
+    $stmt->execute($seatIds);
+}
+
 function customerHasActiveOrderForShow($pdo, $customerId, $showId)
 {
     $stmt = $pdo->prepare(
@@ -274,6 +291,10 @@ if ($pdo === null) {
                 $pdo->beginTransaction();
 
                 try {
+                    // Older seed data may leave cancelled tickets pointing at seats
+                    // already marked available. Remove those stale UNIQUE references
+                    // before creating the new active ticket.
+                    deleteCancelledTicketReferencesForSeats($pdo, $seatIds);
                     $lockedSeats = fetchSelectedSeatsByIdsForUpdate($pdo, $showId, $seatIds);
 
                     if (count($lockedSeats) !== count($seatIds)) {
