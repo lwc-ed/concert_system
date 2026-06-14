@@ -52,6 +52,26 @@ function paymentStatusClass($status)
     return $classes[$status] ?? 'is-unknown';
 }
 
+function paymentMethodText($method)
+{
+    $labels = [
+        'credit_card' => '信用卡付款',
+        'atm_transfer' => 'ATM 虛擬帳號付款',
+    ];
+
+    return $labels[$method] ?? '-';
+}
+
+function deliveryMethodText($method)
+{
+    $labels = [
+        'ibon' => '7-11 ibon 取票',
+        'venue_pickup' => '演出現場票口取票',
+    ];
+
+    return $labels[$method] ?? '-';
+}
+
 function fetchPaymentOrder($pdo, $orderId, $customerId)
 {
     $stmt = $pdo->prepare(
@@ -59,6 +79,8 @@ function fetchPaymentOrder($pdo, $orderId, $customerId)
             o.order_id,
             o.total_price,
             o.status,
+            o.payment_method,
+            o.delivery_method,
             o.created_at,
             sd.show_datetime,
             c.artist,
@@ -80,6 +102,8 @@ function fetchPaymentOrder($pdo, $orderId, $customerId)
             o.order_id,
             o.total_price,
             o.status,
+            o.payment_method,
+            o.delivery_method,
             o.created_at,
             sd.show_datetime,
             c.artist,
@@ -103,6 +127,8 @@ $orderId = filter_input(INPUT_GET, 'order_id', FILTER_VALIDATE_INT, [
 $order = null;
 $errors = [];
 $notice = '';
+$selectedPaymentMethod = (string) ($_POST['payment_method'] ?? 'credit_card');
+$selectedDeliveryMethod = (string) ($_POST['delivery_method'] ?? 'ibon');
 
 if ($pdo === null) {
     $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
@@ -113,54 +139,73 @@ if ($pdo === null) {
         cancelExpiredPendingOrders($pdo, $customerId);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $pdo->beginTransaction();
+            $allowedPaymentMethods = ['credit_card', 'atm_transfer'];
+            $allowedDeliveryMethods = ['ibon', 'venue_pickup'];
 
-            try {
-                $lockStmt = $pdo->prepare(
-                    'SELECT order_id, status
-                     FROM Orders
-                     WHERE order_id = ?
-                       AND user_id = ?
-                     FOR UPDATE'
-                );
-                $lockStmt->execute([$orderId, $customerId]);
-                $lockedOrder = $lockStmt->fetch();
+            if (!in_array($selectedPaymentMethod, $allowedPaymentMethods, true)) {
+                $errors[] = '請選擇有效的付款方式。';
+            }
 
-                if (!$lockedOrder) {
-                    throw new RuntimeException('找不到這筆訂單，或這筆訂單不屬於目前登入會員。');
-                }
+            if (!in_array($selectedDeliveryMethod, $allowedDeliveryMethods, true)) {
+                $errors[] = '請選擇有效的配送方式。';
+            }
 
-                if ($lockedOrder['status'] === 'cancelled') {
-                    throw new RuntimeException('此訂單已取消，無法付款。');
-                }
+            if (!$errors) {
+                $pdo->beginTransaction();
 
-                if ($lockedOrder['status'] === 'pending_payment') {
-                    $orderUpdateStmt = $pdo->prepare(
-                        "UPDATE Orders
-                         SET status = 'paid'
+                try {
+                    $lockStmt = $pdo->prepare(
+                        'SELECT order_id, status
+                         FROM Orders
                          WHERE order_id = ?
-                           AND status = 'pending_payment'"
+                           AND user_id = ?
+                         FOR UPDATE'
                     );
-                    $orderUpdateStmt->execute([$orderId]);
+                    $lockStmt->execute([$orderId, $customerId]);
+                    $lockedOrder = $lockStmt->fetch();
 
-                    $seatUpdateStmt = $pdo->prepare(
-                        "UPDATE Seat s
-                         INNER JOIN Ticket t ON t.seat_id = s.seat_id
-                         SET s.status = 'sold'
-                         WHERE t.order_id = ?"
-                    );
-                    $seatUpdateStmt->execute([$orderId]);
+                    if (!$lockedOrder) {
+                        throw new RuntimeException('找不到這筆訂單，或這筆訂單不屬於目前登入會員。');
+                    }
+
+                    if ($lockedOrder['status'] === 'cancelled') {
+                        throw new RuntimeException('此訂單已取消，無法付款。');
+                    }
+
+                    if ($lockedOrder['status'] === 'pending_payment') {
+                        $orderUpdateStmt = $pdo->prepare(
+                            "UPDATE Orders
+                             SET status = 'paid',
+                                 payment_method = ?,
+                                 delivery_method = ?
+                             WHERE order_id = ?
+                               AND status = 'pending_payment'"
+                        );
+                        $orderUpdateStmt->execute([
+                            $selectedPaymentMethod,
+                            $selectedDeliveryMethod,
+                            $orderId,
+                        ]);
+
+                        $seatUpdateStmt = $pdo->prepare(
+                            "UPDATE Seat s
+                             INNER JOIN Ticket t ON t.seat_id = s.seat_id
+                             SET s.status = 'sold'
+                             WHERE t.order_id = ?"
+                        );
+                        $seatUpdateStmt->execute([$orderId]);
+                    }
+
+                    $pdo->commit();
+                    header('Location: payment.php?order_id=' . $orderId . '&paid=1');
+                    exit;
+                } catch (Throwable $exception) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+
+                    $errors[] = $exception->getMessage();
                 }
-
-                $pdo->commit();
-                header('Location: payment.php?order_id=' . $orderId . '&paid=1');
-                exit;
-            } catch (Throwable $exception) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
-                }
-
-                $errors[] = $exception->getMessage();
             }
         }
 
@@ -266,6 +311,16 @@ if ($pdo === null) {
                         <dt>建立時間</dt>
                         <dd><?= h(paymentDateTimeText($order['created_at'])) ?></dd>
                     </div>
+                    <?php if ($order['status'] === 'paid'): ?>
+                        <div>
+                            <dt>付款方式</dt>
+                            <dd><?= h(paymentMethodText($order['payment_method'])) ?></dd>
+                        </div>
+                        <div>
+                            <dt>取票方式</dt>
+                            <dd><?= h(deliveryMethodText($order['delivery_method'])) ?></dd>
+                        </div>
+                    <?php endif; ?>
                 </dl>
 
                 <div class="payment-total" aria-label="付款金額">
@@ -288,22 +343,66 @@ if ($pdo === null) {
                             <label class="payment-card-full">
                                 <span>信用卡卡號</span>
                                 <input type="text" name="card_number" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456" required>
-                            </label>
-                            <label>
-                                <span>有效期限</span>
-                                <input type="text" name="card_expiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" required>
-                            </label>
-                            <label>
-                                <span>認證碼</span>
-                                <input type="text" name="card_cvv" inputmode="numeric" autocomplete="cc-csc" placeholder="123" required>
-                            </label>
-                            <label class="payment-card-full">
-                                <span>持卡人姓名</span>
-                                <input type="text" name="card_name" autocomplete="cc-name" placeholder="請輸入持卡人姓名" required>
-                            </label>
-                        </div>
+                    <form method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" class="payment-choice-form">
+                        <fieldset class="payment-choice-group">
+                            <legend>付款方式</legend>
 
-                        <p class="checkout-note">此頁為專題模擬付款，不會儲存信用卡資料；送出後訂單會直接更新為已付款。</p>
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="payment_method" value="credit_card" <?= $selectedPaymentMethod === 'credit_card' ? 'checked' : '' ?>>
+                                    <strong>信用卡付款（Credit Card）</strong>
+                                </span>
+                                <span class="payment-choice-description">
+                                    支援 VISA、Mastercard、JCB 與銀聯卡。本頁為專題模擬付款，輸入資料不會被儲存。
+                                </span>
+                                <span class="payment-method-fields" data-payment-fields="credit_card">
+                                    <input type="text" name="card_number" placeholder="信用卡卡號">
+                                    <input type="text" name="card_expiry" placeholder="有效期限 MM/YY">
+                                    <input type="text" name="card_cvv" placeholder="認證碼">
+                                    <input type="text" name="card_name" placeholder="持卡人姓名">
+                                </span>
+                            </label>
+
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="payment_method" value="atm_transfer" <?= $selectedPaymentMethod === 'atm_transfer' ? 'checked' : '' ?>>
+                                    <strong>ATM 虛擬帳號付款（ATM Funds Transfer）</strong>
+                                </span>
+                                <span class="payment-choice-description">
+                                    系統將產生專屬虛擬帳號。請於期限內完成轉帳，逾期未付款時訂單可能被取消。
+                                </span>
+                                <span class="payment-method-fields" data-payment-fields="atm_transfer">
+                                    <input type="text" name="atm_bank_code" placeholder="銀行代碼，例如 822">
+                                    <input type="text" name="atm_account_note" placeholder="轉帳帳號或備註">
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        <fieldset class="payment-choice-group">
+                            <legend>配送方式</legend>
+
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="delivery_method" value="ibon" <?= $selectedDeliveryMethod === 'ibon' ? 'checked' : '' ?>>
+                                    <strong>7-11 ibon 取票（Ticket Collection - ibon）</strong>
+                                </span>
+                                <span class="payment-choice-description">
+                                    付款完成後可至全台 7-11 門市 ibon 機台列印取票繳費單，再至櫃檯領取票券。每筆訂單酌收取票手續費。
+                                </span>
+                            </label>
+
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="delivery_method" value="venue_pickup" <?= $selectedDeliveryMethod === 'venue_pickup' ? 'checked' : '' ?>>
+                                    <strong>演出現場票口取票（Venue Pickup）</strong>
+                                </span>
+                                <span class="payment-choice-description">
+                                    請於演出當日提早至場館票口，出示訂單編號、會員證件與訂票人身分證件後領取票券。
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        <p class="checkout-note">此頁為專題模擬付款，兩種付款方式皆不會連接真實金流或儲存付款資料。</p>
 
                         <div class="payment-actions">
                             <button class="placeholder-link payment-submit-button" type="submit">完成付款</button>
@@ -358,6 +457,19 @@ if ($pdo === null) {
                 }
             }, 1000);
         });
+        const paymentMethodInputs = document.querySelectorAll('input[name="payment_method"]');
+        const paymentMethodFields = document.querySelectorAll('[data-payment-fields]');
+
+        function updatePaymentMethodFields() {
+            const selectedMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
+
+            paymentMethodFields.forEach((fields) => {
+                fields.hidden = fields.dataset.paymentFields !== selectedMethod;
+            });
+        }
+
+        paymentMethodInputs.forEach((input) => input.addEventListener('change', updatePaymentMethodFields));
+        updatePaymentMethodFields();
     </script>
 </body>
 </html>

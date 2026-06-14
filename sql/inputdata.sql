@@ -1,5 +1,38 @@
 USE concert_system;
 
+-- Keep older local databases compatible with the latest payment page.
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS ensure_order_checkout_columns $$
+
+CREATE PROCEDURE ensure_order_checkout_columns()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'Orders'
+          AND COLUMN_NAME = 'payment_method'
+    ) THEN
+        ALTER TABLE Orders ADD COLUMN payment_method VARCHAR(30) NULL AFTER status;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'Orders'
+          AND COLUMN_NAME = 'delivery_method'
+    ) THEN
+        ALTER TABLE Orders ADD COLUMN delivery_method VARCHAR(30) NULL AFTER payment_method;
+    END IF;
+END $$
+
+CALL ensure_order_checkout_columns() $$
+DROP PROCEDURE ensure_order_checkout_columns $$
+
+DELIMITER ;
+
 -- Re-runnable mock data seed.
 -- If teammates already imported an older inputdata.sql, run this file again to refresh
 -- Concert / ShowDate / Seat data to match the current frontend prototype.
@@ -92,7 +125,7 @@ VALUES
         '2026-05-01 12:00:00',
         '2026-06-27 23:59:00',
         '跨界幸福舞台、沉浸式燈光與完整現場樂隊編制，打造幸福期末演唱會，有參加都會有幸福草莓蛋糕喔！',
-        '本場次目前部分場次已售完，想要和幸福崴孟一起幸福æspa要盡快唷！'
+        '【購票常見問題 Q&A】\nQ1: 每位會員限購幾張門票？\nA1: 為維護購票公平性，每位會員在同一個場次中最多只能購買 2 張門票。\nQ2: 聽說現場有送草莓蛋糕是真的嗎？\nA2: 是的！凡購買本場次門票並成功入場者，皆可領取幸福草莓蛋糕一份。'
     ),
     (
         2,
@@ -105,7 +138,7 @@ VALUES
         '2026-03-01 10:00:00',
         '2026-03-31 23:59:00',
         '近距離互動、拍照抽選與粉絲限定舞台內容，適合展示不同活動型態的訂票資訊。',
-        '活動已結束，訂票按鈕會自動呈現不可購買狀態。'
+        '【購票常見問題 Q&A】\nQ1: 活動結束後還可以購票或釋出座位嗎？\nA2: 本活動已於 2026/04 結束，系統已關閉購票與刷卡通道，不開放新訂單。\nQ2: 之前的未付款訂單會怎麼處理？\nA2: 系統管理員已執行排程，逾期未付款之訂單均已被取消並自動釋出座位。'
     ),
     (
         3,
@@ -118,7 +151,7 @@ VALUES
         '2027-01-10 12:00:00',
         '2027-06-04 23:59:00',
         '壓軸場次以大型舞台機關與海外場館規格呈現，頁面保留票區、剩餘票數與訂票流程入口。',
-        '每位會員每筆訂單最多可購買 2 張票，實際付款與座位鎖定可於後續串接訂單資料表。'
+        '【購票常見問題 Q&A】\nQ1: 本場次有實施購票限制嗎？\nA1: 本場次每筆訂單/每位會員最多限購 2 張票，超過系統將會阻擋。\nQ2: 本場次是實名制嗎？可以修改填寫的姓名嗎？\nA2: 本場次為「實名制購票」挑戰項目，送出訂單時必須填寫真實姓名與身分證字號，購票成功後「完全無法修改」，請務必確認後再付款。'
     );
 
 INSERT INTO ShowDate
@@ -300,12 +333,12 @@ CALL append_mock_seats(302, '二樓座席2', 9000, 9, 'sold');
 -- Mock order data for manager Order Management / Order Detail / Sales Report.
 -- These rows depend on the users, promo codes, shows and seats created above.
 INSERT INTO Orders
-    (order_id, user_id, show_id, promo_id, total_price, status, created_at)
+    (order_id, user_id, show_id, promo_id, total_price, status, payment_method, delivery_method, created_at)
 VALUES
-    (1, 2, 102, 1, 8500, 'paid', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    (2, 2, 301, NULL, 72000, 'pending_payment', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
-    (3, 2, 302, 2, 71500, 'pending_payment', DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
-    (4, 2, 301, NULL, 100000, 'cancelled', DATE_SUB(NOW(), INTERVAL 3 DAY));
+    (1, 2, 102, 1, 8500, 'paid', 'credit_card', 'ibon', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (2, 2, 301, NULL, 72000, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
+    (3, 2, 302, 2, 71500, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
+    (4, 2, 301, NULL, 100000, 'cancelled', NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 DAY));
 
 INSERT INTO Ticket
     (order_id, seat_id, real_name, id_number)

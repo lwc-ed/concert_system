@@ -338,7 +338,6 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                     <h2>訂票提醒</h2>
                 </div>
                 <p><?= h($concert['notice']) ?></p>
-                <p>資料庫串接時建議將演唱會主資料、場次、座位、訂單與會員資料拆成不同資料表。使用者選定場次後，再用 show_id 查詢可購買座位。</p>
             </section>
 
             <div class="zone-modal-overlay is-hidden" id="zone-modal" role="dialog" aria-modal="true" aria-labelledby="zone-modal-title">

@@ -252,7 +252,7 @@ if ($pdo === null) {
 
         $hasExistingOrder = customerHasActiveOrderForShow($pdo, $customerId, $showId);
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'apply_promo') {
             $seatIds = array_map('intval', $_POST['seat_ids'] ?? []);
             $seatIds = array_values(array_filter(array_unique($seatIds)));
 
@@ -460,6 +460,7 @@ $firstSeat = $selectedSeats[0] ?? null;
                 </div>
 
                 <form id="checkout-order-form" method="post" action="checkout.php?show_id=<?= h($showId) ?>&seats=<?= h(rawurlencode(implode(',', array_column($selectedSeats, 'seat_number')))) ?>&promo_code=<?= h(rawurlencode($promoCode)) ?>">
+                    <input type="hidden" name="action" value="place_order">
                     <?php foreach ($selectedSeats as $seat): ?>
                         <input type="hidden" name="seat_ids[]" value="<?= h($seat['seat_id']) ?>">
                     <?php endforeach; ?>
@@ -513,12 +514,10 @@ $firstSeat = $selectedSeats[0] ?? null;
                     </div>
                 </div>
 
-                <form class="auth-form checkout-promo-form" method="get" action="checkout.php">
-                    <input type="hidden" name="show_id" value="<?= h($showId) ?>">
-                    <input type="hidden" name="seats" value="<?= h(implode(',', array_column($selectedSeats, 'seat_number'))) ?>">
-                    <?php if ($zone !== ''): ?>
-                        <input type="hidden" name="zone" value="<?= h($zone) ?>">
-                    <?php endif; ?>
+                <form class="auth-form checkout-promo-form" id="checkout-promo-form" method="post" action="checkout.php?show_id=<?= h($showId) ?>&seats=<?= h(rawurlencode(implode(',', array_column($selectedSeats, 'seat_number')))) ?><?= $zone !== '' ? '&zone=' . h(rawurlencode($zone)) : '' ?>">
+                    <input type="hidden" name="action" value="apply_promo">
+                    <input type="hidden" name="companion_real_name" id="promo-companion-name" value="<?= h($companionName) ?>">
+                    <input type="hidden" name="companion_id_number" id="promo-companion-id-number" value="<?= h($companionIdNumber) ?>">
 
                     <label>
                         <span>優惠碼</span>
@@ -546,5 +545,22 @@ $firstSeat = $selectedSeats[0] ?? null;
             <?php endif; ?>
         </section>
     </main>
+    <script>
+        const promoForm = document.getElementById('checkout-promo-form');
+        const companionNameInput = document.querySelector('[name="companion_real_name"][form="checkout-order-form"]');
+        const companionIdInput = document.querySelector('[name="companion_id_number"][form="checkout-order-form"]');
+        const promoCompanionName = document.getElementById('promo-companion-name');
+        const promoCompanionIdNumber = document.getElementById('promo-companion-id-number');
+
+        promoForm?.addEventListener('submit', () => {
+            if (companionNameInput && promoCompanionName) {
+                promoCompanionName.value = companionNameInput.value;
+            }
+
+            if (companionIdInput && promoCompanionIdNumber) {
+                promoCompanionIdNumber.value = companionIdInput.value;
+            }
+        });
+    </script>
 </body>
 </html>

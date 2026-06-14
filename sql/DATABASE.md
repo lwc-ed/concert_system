@@ -92,6 +92,8 @@
 | `promo_id` | INT | FK, NULL | 指向 `PromoCode`。**【ON DELETE SET NULL】折扣碼若過期被後台刪除，訂單不受影響，此處自動轉 NULL** |
 | `total_price` | INT | NOT NULL | 最終扣抵完折扣優惠後的總實付金額 |
 | `status` | ENUM | DEFAULT 'pending_payment'| 交易進度：限制隻能填 `'pending_payment'`(待付款)、`'paid'`(已付款)、`'cancelled'`(已取消) |
+| `payment_method` | VARCHAR(30) | NULL | 完成付款時記錄付款方式：`credit_card` 或 `atm_transfer` |
+| `delivery_method` | VARCHAR(30) | NULL | 完成付款時記錄取票方式：`ibon` 或 `venue_pickup` |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP| 訂單建立時間。**用來發動倒數 10 分鐘未付款自動釋出座位的時間基準** |
 
 ---
