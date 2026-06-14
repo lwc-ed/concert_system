@@ -283,6 +283,8 @@ if ($pdo === null) {
                 $errors[] = '會員本人已在同一場次建立過票券，不能重複訂購。';
             } elseif (count($seatIds) === 2 && ($companionName === '' || $companionIdNumber === '')) {
                 $errors[] = '購買兩張票時，第二位訂購人需填寫真實姓名與身分證字號。';
+            } elseif (count($seatIds) === 2 && !preg_match('/^[A-Za-z][A-Za-z0-9]{9}$/', $companionIdNumber)) {
+                $errors[] = '第二位訂購人身分證字號首字必須為英文字母，且總長度為 10 個字。';
             } elseif (count($seatIds) === 2 && hash_equals(strtoupper((string) $customer['id_number']), $companionIdNumber)) {
                 $errors[] = '第二位訂購人不可與會員本人使用相同身分證字號。';
             } elseif (count($seatIds) === 2 && ticketHolderExistsForShow($pdo, $showId, $companionIdNumber)) {
@@ -538,7 +540,7 @@ $firstSeat = $selectedSeats[0] ?? null;
                                     </label>
                                     <label>
                                         <span>身分證字號</span>
-                                        <input form="checkout-order-form" type="text" name="companion_id_number" value="<?= h($companionIdNumber) ?>" placeholder="A123456789" required>
+                                        <input form="checkout-order-form" type="text" name="companion_id_number" value="<?= h($companionIdNumber) ?>" placeholder="A123456789" maxlength="10" pattern="[A-Za-z][A-Za-z0-9]{9}" title="首字元請輸入英文字母，總長度為 10 個字" required>
                                     </label>
                                 </div>
                                 <p class="checkout-note">第二位訂購人需填寫真實姓名與身分證字號，且同一場次不可重複建立票券。</p>
