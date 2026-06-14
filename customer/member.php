@@ -55,6 +55,16 @@ $styleVersion = file_exists($stylePath) ? filemtime($stylePath) : time();
 $customerId = (int) $_SESSION['customer_id'];
 $member = null;
 $orders = [];
+$orderGroups = [
+    'upcoming' => [],
+    'past' => [],
+    'cancelled' => [],
+];
+$orderGroupLabels = [
+    'upcoming' => '即將到來',
+    'past' => '過去訂單',
+    'cancelled' => '已取消',
+];
 $pageError = null;
 $updateSuccess = isset($_GET['updated']) && $_GET['updated'] === '1';
 
@@ -115,6 +125,29 @@ if ($pdo === null) {
         );
         $orderStatement->execute(['user_id' => $customerId]);
         $orders = $orderStatement->fetchAll();
+
+        $now = time();
+        foreach ($orders as $order) {
+            $showTimestamp = $order['show_datetime'] ? strtotime((string) $order['show_datetime']) : false;
+
+            if ($order['status'] === 'cancelled') {
+                $orderGroups['cancelled'][] = $order;
+            } elseif ($showTimestamp !== false && $showTimestamp >= $now) {
+                $orderGroups['upcoming'][] = $order;
+            } else {
+                $orderGroups['past'][] = $order;
+            }
+        }
+
+        usort($orderGroups['upcoming'], function ($left, $right) {
+            return strtotime((string) $left['show_datetime']) <=> strtotime((string) $right['show_datetime']);
+        });
+        usort($orderGroups['past'], function ($left, $right) {
+            return strtotime((string) ($right['show_datetime'] ?? '')) <=> strtotime((string) ($left['show_datetime'] ?? ''));
+        });
+        usort($orderGroups['cancelled'], function ($left, $right) {
+            return strtotime((string) $right['created_at']) <=> strtotime((string) $left['created_at']);
+        });
     } catch (PDOException $exception) {
         $pageError = '會員資料讀取失敗：' . $exception->getMessage();
     }
@@ -206,75 +239,90 @@ if ($pdo === null) {
                 <?php if (!$orders): ?>
                     <p class="member-empty">目前沒有訂單紀錄。</p>
                 <?php else: ?>
-                    <div class="member-order-list">
-                        <?php foreach ($orders as $order): ?>
-                            <article class="member-order-card">
-                                <div class="member-order-head">
-                                    <div>
-                                        <p>訂單 #<?= h($order['order_id']) ?></p>
-                                        <h3>
-                                            <a href="order_detail.php?order_id=<?= h($order['order_id']) ?>">
-                                                <?= h($order['title'] ?? '演唱會資料已移除') ?>
-                                            </a>
-                                        </h3>
-                                    </div>
-                                    <span class="member-status <?= h(orderStatusClass($order['status'])) ?>"><?= h(orderStatusText($order['status'])) ?></span>
-                                    <?php if ($order['status'] === 'pending_payment'): ?>
-                                        <?php $orderSecondsRemaining = orderPaymentSecondsRemaining($order['created_at']); ?>
-                                        <span class="member-status is-pending" data-order-countdown data-order-id="<?= h($order['order_id']) ?>" data-seconds="<?= h($orderSecondsRemaining) ?>">
-                                            付款倒數 <strong data-countdown-text><?= h(gmdate('i:s', $orderSecondsRemaining)) ?></strong>
-                                        </span>
-                                    <?php endif; ?>
+                    <div class="member-order-groups">
+                        <?php foreach ($orderGroups as $groupKey => $groupOrders): ?>
+                            <section class="member-order-group" aria-labelledby="order-group-<?= h($groupKey) ?>">
+                                <div class="member-order-group-heading">
+                                    <h3 id="order-group-<?= h($groupKey) ?>"><?= h($orderGroupLabels[$groupKey]) ?></h3>
+                                    <span><?= h(count($groupOrders)) ?> 筆</span>
                                 </div>
 
-                                <dl class="member-order-info">
-                                    <div>
-                                        <dt>活動名稱</dt>
-                                        <dd><?= h($order['artist'] ?? '-') ?></dd>
-                                    </div>
-                                    <div>
-                                        <dt>演出時間</dt>
-                                        <dd><?= h(memberDateTimeText($order['show_datetime'] ?? null)) ?></dd>
-                                    </div>
-                                    <div>
-                                        <dt>場地</dt>
-                                        <dd><?= h($order['venue'] ?? '-') ?></dd>
-                                    </div>
-                                    <div>
-                                        <dt>座位</dt>
-                                        <dd><?= h($order['seat_numbers'] ?: '-') ?></dd>
-                                    </div>
-                                    <div>
-                                        <dt>票數</dt>
-                                        <dd><?= h((int) $order['ticket_count']) ?> 張</dd>
-                                    </div>
-                                    <div>
-                                        <dt>促銷碼</dt>
-                                        <dd>
-                                            <?php if ($order['code_name']): ?>
-                                                <?= h($order['code_name']) ?>，折抵 NT$<?= h(number_format((int) $order['discount_amount'])) ?>
-                                            <?php else: ?>
-                                                -
-                                            <?php endif; ?>
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt>訂單金額</dt>
-                                        <dd>NT$<?= h(number_format((int) $order['total_price'])) ?></dd>
-                                    </div>
-                                    <div>
-                                        <dt>建立時間</dt>
-                                        <dd><?= h(memberDateTimeText($order['created_at'])) ?></dd>
-                                    </div>
-                                </dl>
+                                <?php if (!$groupOrders): ?>
+                                    <p class="member-empty member-order-group-empty">目前沒有<?= h($orderGroupLabels[$groupKey]) ?>的訂單。</p>
+                                <?php else: ?>
+                                    <div class="member-order-list">
+                                        <?php foreach ($groupOrders as $order): ?>
+                                            <article class="member-order-card">
+                                                <div class="member-order-head">
+                                                    <div>
+                                                        <p>訂單 #<?= h($order['order_id']) ?></p>
+                                                        <h3>
+                                                            <a href="order_detail.php?order_id=<?= h($order['order_id']) ?>">
+                                                                <?= h($order['title'] ?? '演唱會資料已移除') ?>
+                                                            </a>
+                                                        </h3>
+                                                    </div>
+                                                    <span class="member-status <?= h(orderStatusClass($order['status'])) ?>"><?= h(orderStatusText($order['status'])) ?></span>
+                                                    <?php if ($order['status'] === 'pending_payment'): ?>
+                                                        <?php $orderSecondsRemaining = orderPaymentSecondsRemaining($order['created_at']); ?>
+                                                        <span class="member-status is-pending" data-order-countdown data-order-id="<?= h($order['order_id']) ?>" data-seconds="<?= h($orderSecondsRemaining) ?>">
+                                                            付款倒數 <strong data-countdown-text><?= h(gmdate('i:s', $orderSecondsRemaining)) ?></strong>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
 
-                                <div class="member-order-actions">
-                                    <a class="secondary-action" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">查看詳情</a>
-                                    <?php if ($order['status'] === 'pending_payment'): ?>
-                                        <a class="secondary-action" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
-                                    <?php endif; ?>
-                                </div>
-                            </article>
+                                                <dl class="member-order-info">
+                                                    <div>
+                                                        <dt>活動名稱</dt>
+                                                        <dd><?= h($order['artist'] ?? '-') ?></dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>演出時間</dt>
+                                                        <dd><?= h(memberDateTimeText($order['show_datetime'] ?? null)) ?></dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>場地</dt>
+                                                        <dd><?= h($order['venue'] ?? '-') ?></dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>座位</dt>
+                                                        <dd><?= h($order['seat_numbers'] ?: '-') ?></dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>票數</dt>
+                                                        <dd><?= h((int) $order['ticket_count']) ?> 張</dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>促銷碼</dt>
+                                                        <dd>
+                                                            <?php if ($order['code_name']): ?>
+                                                                <?= h($order['code_name']) ?>，折抵 NT$<?= h(number_format((int) $order['discount_amount'])) ?>
+                                                            <?php else: ?>
+                                                                -
+                                                            <?php endif; ?>
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>訂單金額</dt>
+                                                        <dd>NT$<?= h(number_format((int) $order['total_price'])) ?></dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt>建立時間</dt>
+                                                        <dd><?= h(memberDateTimeText($order['created_at'])) ?></dd>
+                                                    </div>
+                                                </dl>
+
+                                                <div class="member-order-actions">
+                                                    <a class="secondary-action" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">查看詳情</a>
+                                                    <?php if ($order['status'] === 'pending_payment'): ?>
+                                                        <a class="secondary-action" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </article>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </section>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>

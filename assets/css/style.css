@@ -963,6 +963,45 @@ a {
     gap: 14px;
 }
 
+.member-order-groups {
+    display: grid;
+    gap: 30px;
+}
+
+.member-order-group {
+    display: grid;
+    gap: 14px;
+}
+
+.member-order-group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--line);
+}
+
+.member-order-group-heading h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 20px;
+}
+
+.member-order-group-heading span {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-radius: 8px;
+    background: #f1f2f4;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.member-order-group-empty {
+    background: #f8f8f7;
+}
+
 .member-order-card {
     padding: 18px;
     border: 1px solid var(--line);
