@@ -246,6 +246,11 @@ if ($pdo === null) {
 
         if (!$order && !$errors) {
             $errors[] = '找不到這筆訂單，或這筆訂單不屬於目前登入會員。';
+        } elseif ($order
+            && $_SERVER['REQUEST_METHOD'] !== 'POST'
+            && in_array($order['delivery_method'], ['ibon', 'venue_pickup'], true)
+        ) {
+            $selectedDeliveryMethod = $order['delivery_method'];
         }
     } catch (PDOException $exception) {
         $errors[] = '讀取付款資料失敗：' . $exception->getMessage();

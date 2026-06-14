@@ -163,8 +163,43 @@ if ($pdo === null) {
             $errors[] = '此訂單目前無法取消，請確認訂單是否仍為可取消狀態。';
         }
 
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_delivery_method') {
+            $deliveryMethod = (string) ($_POST['delivery_method'] ?? '');
+            $allowedDeliveryMethods = ['ibon', 'venue_pickup'];
+            $editableOrder = fetchOrderDetail($pdo, $orderId, $customerId);
+
+            if (!in_array($deliveryMethod, $allowedDeliveryMethods, true)) {
+                $errors[] = '請選擇有效的取票方式。';
+            } elseif (!$editableOrder || $editableOrder['status'] === 'cancelled') {
+                $errors[] = '此訂單目前無法修改，請確認訂單是否存在或已取消。';
+            } else {
+                $updateStmt = $pdo->prepare(
+                    'UPDATE Orders
+                     SET delivery_method = ?
+                     WHERE order_id = ?
+                       AND user_id = ?
+                       AND status <> \'cancelled\''
+                );
+                $updateStmt->execute([$deliveryMethod, $orderId, $customerId]);
+
+                $updatedOrder = fetchOrderDetail($pdo, $orderId, $customerId);
+
+                if ($updatedOrder
+                    && $updatedOrder['status'] !== 'cancelled'
+                    && $updatedOrder['delivery_method'] === $deliveryMethod
+                ) {
+                    header('Location: order_detail.php?order_id=' . $orderId . '&updated=1');
+                    exit;
+                }
+
+                $errors[] = '此訂單目前無法修改，請確認訂單是否存在或已取消。';
+            }
+        }
+
         if (isset($_GET['cancelled']) && $_GET['cancelled'] === '1') {
             $notice = '訂單已取消，您可以重新訂購同一場次。';
+        } elseif (isset($_GET['updated']) && $_GET['updated'] === '1') {
+            $notice = '取票方式已更新。';
         }
 
         $order = fetchOrderDetail($pdo, $orderId, $customerId);
@@ -328,12 +363,41 @@ if ($pdo === null) {
                     </div>
                 <?php endif; ?>
 
+                <?php if ($order['status'] !== 'cancelled'): ?>
+                    <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="order-edit-form" data-order-edit-form hidden>
+                        <input type="hidden" name="action" value="update_delivery_method">
+                        <fieldset class="payment-choice-group">
+                            <legend>修改取票方式</legend>
+
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="delivery_method" value="ibon" <?= $order['delivery_method'] === 'ibon' || !$order['delivery_method'] ? 'checked' : '' ?>>
+                                    <strong>7-11 ibon 取票</strong>
+                                </span>
+                            </label>
+
+                            <label class="payment-choice-card">
+                                <span class="payment-choice-title">
+                                    <input type="radio" name="delivery_method" value="venue_pickup" <?= $order['delivery_method'] === 'venue_pickup' ? 'checked' : '' ?>>
+                                    <strong>演出現場票口取票</strong>
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        <div class="member-order-actions">
+                            <button class="secondary-action" type="button" data-order-edit-cancel>取消修改</button>
+                            <button class="placeholder-link" type="submit">儲存取票方式</button>
+                        </div>
+                    </form>
+                <?php endif; ?>
+
                 <div class="member-order-actions">
                     <a class="secondary-action" href="member.php">回會員中心</a>
                     <?php if ($order['status'] === 'pending_payment'): ?>
                         <a class="placeholder-link" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
                     <?php endif; ?>
                     <?php if ($order['status'] !== 'cancelled'): ?>
+                        <button class="secondary-action" type="button" data-order-edit-toggle>修改訂單</button>
                         <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" onsubmit="return confirm('確定要取消此訂單嗎？');">
                             <input type="hidden" name="action" value="cancel_order">
                             <button class="secondary-action danger-action" type="submit">取消訂票</button>
@@ -344,6 +408,26 @@ if ($pdo === null) {
         </section>
     </main>
     <script>
+        const orderEditForm = document.querySelector('[data-order-edit-form]');
+        const orderEditToggle = document.querySelector('[data-order-edit-toggle]');
+        const orderEditCancel = document.querySelector('[data-order-edit-cancel]');
+
+        function setOrderEditFormVisible(isVisible) {
+            if (!orderEditForm || !orderEditToggle) {
+                return;
+            }
+
+            orderEditForm.hidden = !isVisible;
+            orderEditToggle.hidden = isVisible;
+
+            if (isVisible) {
+                orderEditForm.querySelector('input[name="delivery_method"]:checked')?.focus();
+            }
+        }
+
+        orderEditToggle?.addEventListener('click', () => setOrderEditFormVisible(true));
+        orderEditCancel?.addEventListener('click', () => setOrderEditFormVisible(false));
+
         document.querySelectorAll('[data-order-countdown]').forEach((timer) => {
             let seconds = Number.parseInt(timer.dataset.seconds || '0', 10);
             const orderId = timer.dataset.orderId;
