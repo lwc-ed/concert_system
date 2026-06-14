@@ -99,6 +99,8 @@ CREATE TABLE Orders (
     promo_id INT NULL,                     -- 記錄這筆訂單用了哪組促銷碼 (可為空)
     total_price INT NOT NULL,              -- 扣除折扣後的最終總金額
     status ENUM('pending_payment', 'paid', 'cancelled') DEFAULT 'pending_payment',
+    payment_method VARCHAR(30) NULL,        -- 付款方式：credit_card / atm_transfer
+    delivery_method VARCHAR(30) NULL,       -- 取票方式：ibon / venue_pickup
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES User(user_id),
     FOREIGN KEY (show_id) REFERENCES ShowDate(show_id),

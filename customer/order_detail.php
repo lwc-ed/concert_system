@@ -62,6 +62,26 @@ function orderDetailSeatStatusText($status)
     return $labels[$status] ?? (string) $status;
 }
 
+function orderDetailPaymentMethodText($method)
+{
+    $labels = [
+        'credit_card' => '信用卡付款',
+        'atm_transfer' => 'ATM 虛擬帳號付款',
+    ];
+
+    return $labels[$method] ?? '-';
+}
+
+function orderDetailDeliveryMethodText($method)
+{
+    $labels = [
+        'ibon' => '7-11 ibon 取票',
+        'venue_pickup' => '演出現場票口取票',
+    ];
+
+    return $labels[$method] ?? '-';
+}
+
 function fetchOrderDetail($pdo, $orderId, $customerId)
 {
     $stmt = $pdo->prepare(
@@ -69,6 +89,8 @@ function fetchOrderDetail($pdo, $orderId, $customerId)
             o.order_id,
             o.total_price,
             o.status,
+            o.payment_method,
+            o.delivery_method,
             o.created_at,
             sd.show_id,
             sd.show_datetime,
@@ -299,6 +321,14 @@ if ($pdo === null) {
                     <div>
                         <dt>建立時間</dt>
                         <dd><?= h(orderDetailDateTimeText($order['created_at'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>付款方式</dt>
+                        <dd><?= h(orderDetailPaymentMethodText($order['payment_method'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>取票方式</dt>
+                        <dd><?= h(orderDetailDeliveryMethodText($order['delivery_method'])) ?></dd>
                     </div>
                 </dl>
 

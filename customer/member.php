@@ -188,10 +188,6 @@ if ($pdo === null) {
                         <dd><?= h($member['phone_num']) ?></dd>
                     </div>
                     <div>
-                        <dt>Email</dt>
-                        <dd><?= h($member['email']) ?></dd>
-                    </div>
-                    <div>
                         <dt>地址</dt>
                         <dd><?= h($member['user_address'] ?: '-') ?></dd>
                     </div>
