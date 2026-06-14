@@ -33,6 +33,7 @@ function fetchDatabaseRows($sql, $params = []) {
         $statement->execute($params);
         return $statement->fetchAll();
     } catch (PDOException $exception) {
+        error_log('Concert data query failed: ' . $exception->getMessage());
         return null;
     }
 }
@@ -61,6 +62,56 @@ function getConcertTable() {
          LEFT JOIN Organizer o ON o.organizer_id = c.organizer_id
          ORDER BY c.concert_id'
     );
+
+    if ($rows === null) {
+        $rows = fetchDatabaseRows(
+            'SELECT
+                c.concert_id,
+                NULL AS organizer_id,
+                c.artist,
+                c.title,
+                c.venue,
+                c.concert_address AS address,
+                c.image,
+                c.sale_start,
+                c.sale_end,
+                c.description,
+                c.notice,
+                NULL AS organizer_name,
+                NULL AS organizer_contact_person,
+                NULL AS organizer_contact_email,
+                NULL AS organizer_contact_phone,
+                NULL AS organizer_address,
+                NULL AS organizer_note
+             FROM Concert c
+             ORDER BY c.concert_id'
+        );
+    }
+
+    if ($rows === null) {
+        $rows = fetchDatabaseRows(
+            'SELECT
+                c.concert_id,
+                NULL AS organizer_id,
+                c.artist,
+                c.title,
+                c.venue,
+                c.address,
+                c.image,
+                c.sale_start,
+                c.sale_end,
+                c.description,
+                c.notice,
+                NULL AS organizer_name,
+                NULL AS organizer_contact_person,
+                NULL AS organizer_contact_email,
+                NULL AS organizer_contact_phone,
+                NULL AS organizer_address,
+                NULL AS organizer_note
+             FROM Concert c
+             ORDER BY c.concert_id'
+        );
+    }
 
     if ($rows !== null) {
         return array_map('normalizeConcertRow', $rows);
