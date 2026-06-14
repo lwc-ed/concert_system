@@ -173,6 +173,7 @@ $order = null;
 $tickets = [];
 $errors = [];
 $notice = '';
+$showCancelConfirm = false;
 
 if ($pdo === null) {
     $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
@@ -181,9 +182,15 @@ if ($pdo === null) {
 } else {
     try {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
-            cancelOrder($pdo, $orderId, $customerId);
-            header('Location: order_detail.php?order_id=' . $orderId . '&cancelled=1');
-            exit;
+            // Two-step cancellation: first POST without confirm will show confirmation UI.
+            // Only perform cancellation when user submits with confirm=1.
+            if (isset($_POST['confirm']) && $_POST['confirm'] === '1') {
+                cancelOrder($pdo, $orderId, $customerId);
+                header('Location: order_detail.php?order_id=' . $orderId . '&cancelled=1');
+                exit;
+            } else {
+                $showCancelConfirm = true;
+            }
         }
 
         if (isset($_GET['cancelled']) && $_GET['cancelled'] === '1') {
@@ -341,10 +348,20 @@ if ($pdo === null) {
                         <a class="placeholder-link" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
                     <?php endif; ?>
                     <?php if ($order['status'] !== 'cancelled'): ?>
-                        <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form">
-                            <input type="hidden" name="action" value="cancel_order">
-                            <button class="secondary-action danger-action" type="submit">取消訂票</button>
-                        </form>
+                        <?php if ($showCancelConfirm): ?>
+                            <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" aria-label="取消訂單確認表單">
+                                <input type="hidden" name="action" value="cancel_order">
+                                <input type="hidden" name="confirm" value="1">
+                                <p>您確定要取消此訂單嗎？此操作會釋放座位且無法復原。</p>
+                                <button class="secondary-action danger-action" type="submit">是，我要取消訂單</button>
+                                <a class="secondary-action" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">否，返回訂單</a>
+                            </form>
+                        <?php else: ?>
+                            <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form">
+                                <input type="hidden" name="action" value="cancel_order">
+                                <button class="secondary-action danger-action" type="submit">取消訂票</button>
+                            </form>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>

@@ -57,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
 
         if ($idNumber === '' || strlen($idNumber) > 20) {
             $errors[] = '身分證字號必填，且長度不可超過 20 個字。';
+        } elseif (!preg_match('/^[A-Za-z]/', $idNumber)) {
+            $errors[] = '身分證字號首字必須為英文字母。';
         }
 
         if (strlen($password) < 8) {
@@ -155,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo !== null) {
                 </label>
                 <label>
                     <span>身分證字號</span>
-                    <input type="text" name="id_number" maxlength="20" required value="<?= h($idNumber) ?>">
+                    <input type="text" name="id_number" maxlength="20" pattern="[A-Za-z].*" title="第一個字元請輸入英文字母" required value="<?= h($idNumber) ?>">
                 </label>
                 <label>
                     <span>地址</span>
