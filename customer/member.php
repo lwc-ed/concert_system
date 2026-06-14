@@ -55,13 +55,14 @@ $customerId = (int) $_SESSION['customer_id'];
 $member = null;
 $orders = [];
 $pageError = null;
+$updateSuccess = isset($_GET['updated']) && $_GET['updated'] === '1';
 
 if ($pdo === null) {
     $pageError = '目前無法連線到資料庫，請確認 MAMP / MySQL 已啟動，且 includes/db_config.php 設定正確。';
 } else {
     try {
         $memberStatement = $pdo->prepare(
-            'SELECT username, real_name, birth_date, phone_num, id_number, email, user_address
+            'SELECT user_id, username, real_name, birth_date, phone_num, id_number, email, user_address, role, created_at
              FROM `User`
              WHERE user_id = :user_id
              LIMIT 1'
@@ -153,10 +154,17 @@ if ($pdo === null) {
             </section>
         <?php elseif ($member): ?>
             <section class="member-panel" aria-labelledby="profile-title">
-                <div class="member-section-title">
-                    <p>Profile</p>
-                    <h2 id="profile-title">帳號資料</h2>
+                <div class="member-section-heading">
+                    <div class="member-section-title">
+                        <p>Profile</p>
+                        <h2 id="profile-title">帳號資料</h2>
+                    </div>
+                    <a class="secondary-action" href="edit_member.php">編輯會員資料</a>
                 </div>
+
+                <?php if ($updateSuccess): ?>
+                    <p class="member-alert member-success">會員資料已更新。</p>
+                <?php endif; ?>
 
                 <dl class="member-info-grid">
                     <div>
@@ -164,16 +172,16 @@ if ($pdo === null) {
                         <dd><?= h($member['username']) ?></dd>
                     </div>
                     <div>
-                        <dt>真實姓名</dt>
+                        <dt>姓名</dt>
                         <dd><?= h($member['real_name']) ?></dd>
                     </div>
                     <div>
-                        <dt>真實姓名</dt>
-                        <dd><?= h($member['real_name']) ?></dd>
+                        <dt>Email</dt>
+                        <dd><?= h($member['email']) ?></dd>
                     </div>
                     <div>
                         <dt>生日</dt>
-                        <dd><?= h(memberDateTimeText($member['birth_date'])) ?></dd>
+                        <dd><?= h(memberDateText($member['birth_date'])) ?></dd>
                     </div>
                     <div>
                         <dt>電話號碼</dt>

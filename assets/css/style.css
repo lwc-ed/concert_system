@@ -673,6 +673,22 @@ a {
     margin-bottom: 18px;
 }
 
+.member-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.member-section-heading .member-section-title {
+    margin-bottom: 0;
+}
+
+.member-section-heading .secondary-action {
+    width: auto;
+}
+
 .member-section-title h2 {
     font-size: clamp(24px, 3vw, 34px);
 }
@@ -729,6 +745,51 @@ a {
     border-color: #e2b4b4;
     background: #fff5f2;
     color: var(--accent-dark);
+}
+
+.member-alert p {
+    margin: 0;
+}
+
+.member-alert p + p {
+    margin-top: 6px;
+}
+
+.member-success {
+    margin-bottom: 16px;
+    border-color: #b9dcc5;
+    background: #edf8f1;
+    color: #245b38;
+}
+
+.member-edit-form {
+    max-width: none;
+}
+
+.member-edit-form input[readonly] {
+    cursor: not-allowed;
+    background: #f1f2f4;
+    color: var(--muted);
+}
+
+.member-edit-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.member-edit-actions .secondary-action,
+.member-edit-actions .auth-submit {
+    width: 100%;
+    margin: 0;
+}
+
+.member-security-note {
+    margin: 18px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
 }
 
 .member-order-list {
@@ -1886,6 +1947,16 @@ a {
 
     .member-order-head {
         display: grid;
+    }
+
+    .member-section-heading,
+    .member-edit-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .member-section-heading .secondary-action {
+        width: 100%;
     }
 
     .detail-hero,
