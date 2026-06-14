@@ -188,8 +188,8 @@ if ($pdo === null) {
                         <dd><?= h($member['phone_num']) ?></dd>
                     </div>
                     <div>
-                        <dt>身分證字號</dt>
-                        <dd><?= h($member['id_number']) ?></dd>
+                        <dt>Email</dt>
+                        <dd><?= h($member['email']) ?></dd>
                     </div>
                     <div>
                         <dt>地址</dt>
