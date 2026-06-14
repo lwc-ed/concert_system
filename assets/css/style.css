@@ -1259,7 +1259,8 @@ a {
 
 .checkout-pay-button,
 .payment-submit-button,
-.payment-delay-button {
+.payment-delay-button,
+.payment-abandon-button {
     min-height: 54px;
     padding: 0 26px;
     font-size: 20px;

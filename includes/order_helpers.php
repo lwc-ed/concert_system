@@ -19,6 +19,64 @@ function archiveCancelledTickets(PDO $pdo, int $orderId): void
          WHERE ticket.order_id = :order_id"
     );
     $archiveStmt->execute([':order_id' => $orderId]);
+function abandonPendingOrderAndReleaseSeats(PDO $pdo, int $orderId, int $customerId): bool
+{
+    $pdo->beginTransaction();
+
+    try {
+        $orderStmt = $pdo->prepare(
+            "SELECT order_id, status
+             FROM Orders
+             WHERE order_id = :order_id
+               AND user_id = :customer_id
+             FOR UPDATE"
+        );
+        $orderStmt->execute([
+            ':order_id' => $orderId,
+            ':customer_id' => $customerId,
+        ]);
+        $order = $orderStmt->fetch();
+
+        if (!$order || $order['status'] !== 'pending_payment') {
+            $pdo->rollBack();
+            return false;
+        }
+
+        $seatStmt = $pdo->prepare(
+            "UPDATE Seat s
+             INNER JOIN Ticket t ON t.seat_id = s.seat_id
+             SET s.status = 'available'
+             WHERE t.order_id = :order_id"
+        );
+        $seatStmt->execute([':order_id' => $orderId]);
+
+        $ticketStmt = $pdo->prepare('DELETE FROM Ticket WHERE order_id = :order_id');
+        $ticketStmt->execute([':order_id' => $orderId]);
+
+        $deleteOrderStmt = $pdo->prepare(
+            "DELETE FROM Orders
+             WHERE order_id = :order_id
+               AND user_id = :customer_id
+               AND status = 'pending_payment'"
+        );
+        $deleteOrderStmt->execute([
+            ':order_id' => $orderId,
+            ':customer_id' => $customerId,
+        ]);
+
+        if ($deleteOrderStmt->rowCount() !== 1) {
+            throw new RuntimeException('Pending order status changed while abandoning.');
+        }
+
+        $pdo->commit();
+        return true;
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $exception;
+    }
 }
 
 function cancelPendingOrderAndReleaseSeats(PDO $pdo, int $orderId, ?int $customerId = null, bool $requireExpired = false): bool
