@@ -404,5 +404,11 @@ WHERE seat_id IN (
     SELECT seat_id FROM Ticket WHERE order_id = 4
 );
 
+-- Cancelled orders release their seats by removing Ticket rows. Keeping a
+-- cancelled Ticket would conflict with Ticket.seat_id UNIQUE when the same
+-- available seat is purchased again.
+DELETE FROM Ticket
+WHERE order_id = 4;
+
 DROP PROCEDURE IF EXISTS append_mock_seats;
 DROP PROCEDURE IF EXISTS append_mock_seat_unit;
