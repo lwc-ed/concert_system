@@ -1575,6 +1575,22 @@ a {
     margin-bottom: 18px;
 }
 
+.detail-overview-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.detail-overview-heading > div {
+    min-width: 0;
+}
+
+.contact-organizer-action {
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
 .section-heading h2 {
     margin: 0;
     color: var(--ink);
@@ -1973,11 +1989,70 @@ a {
     padding: 18px 24px;
 }
 
+.contact-modal {
+    width: min(600px, 100%);
+}
+
+.contact-email-form {
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px 24px;
+}
+
+.contact-email-form label {
+    display: grid;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.contact-email-form input,
+.contact-email-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    line-height: 1.5;
+}
+
+.contact-email-form input[readonly] {
+    background: #f4efe8;
+    color: var(--muted);
+}
+
+.contact-email-form textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.contact-email-form input:focus,
+.contact-email-form textarea:focus {
+    border-color: var(--accent);
+    outline: 2px solid rgba(184, 50, 50, 0.12);
+}
+
+.contact-email-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
 .zone-modal-footer {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 24px 22px;
+}
+
+.contact-modal-footer {
+    justify-content: flex-end;
+    padding: 0;
 }
 
 .zone-modal-selection-count {
@@ -2127,6 +2202,25 @@ a {
 }
 
 @media (max-width: 560px) {
+    .detail-overview-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .contact-organizer-action {
+        width: 100%;
+    }
+
+    .contact-modal-footer {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .contact-modal-footer .primary-action,
+    .contact-modal-footer .secondary-action {
+        width: 100%;
+    }
+
     .main-nav {
         flex-wrap: wrap;
     }
