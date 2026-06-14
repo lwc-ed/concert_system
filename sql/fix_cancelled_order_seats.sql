@@ -40,6 +40,8 @@ WHERE orders_table.status = 'cancelled'
         AND existing_cancelled_ticket.seat_id = ticket.seat_id
   );
 
+START TRANSACTION;
+
 UPDATE Seat seat
 INNER JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
 INNER JOIN Orders orders_table ON orders_table.order_id = ticket.order_id

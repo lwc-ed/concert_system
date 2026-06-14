@@ -1059,6 +1059,22 @@ a {
     margin: 0;
 }
 
+.order-edit-form {
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.order-edit-form[hidden] {
+    display: none;
+}
+
+.order-edit-form .payment-choice-group {
+    margin: 0;
+}
+
 .danger-action {
     border-color: #e2b4b4;
     color: #9a2525;
