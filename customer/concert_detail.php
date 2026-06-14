@@ -78,6 +78,8 @@ $styleVersion = filemtime(__DIR__ . '/../assets/css/style.css');
 $posterVersion = $concert ? filemtime(__DIR__ . '/../' . $concert['image']) : time();
 $seatMapByShow = [];
 $seatMapLayout = $concert ? getSeatMapLayout($concert['concert_id']) : [];
+$organizerEmail = trim((string) ($concert['organizer_contact_email'] ?? ''));
+$hasOrganizerEmail = filter_var($organizerEmail, FILTER_VALIDATE_EMAIL) !== false;
 
 if ($concert) {
     foreach ($showDates as $showDate) {
@@ -179,9 +181,18 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
 
             <section class="detail-layout" aria-label="演唱會資訊">
                 <article class="detail-panel">
-                    <div class="section-heading">
-                        <p>Overview</p>
-                        <h2>活動介紹</h2>
+                    <div class="section-heading detail-overview-heading">
+                        <div>
+                            <p>Overview</p>
+                            <h2>活動介紹</h2>
+                        </div>
+                        <?php if ($hasOrganizerEmail): ?>
+                            <button class="secondary-action contact-organizer-action" type="button" data-open-contact-modal>
+                                聯絡主辦方
+                            </button>
+                        <?php else: ?>
+                            <span class="disabled-action contact-organizer-action">暫無聯絡信箱</span>
+                        <?php endif; ?>
                     </div>
                     <p class="detail-copy"><?= h($concert['description']) ?></p>
 
@@ -369,6 +380,40 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
                     </div>
                 </div>
             </div>
+
+            <?php if ($hasOrganizerEmail): ?>
+                <div class="zone-modal-overlay is-hidden" id="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+                    <section class="zone-modal contact-modal">
+                        <div class="zone-modal-header">
+                            <div>
+                                <p class="zone-modal-kicker">Contact Organizer</p>
+                                <h3 id="contact-modal-title">聯絡主辦方</h3>
+                                <p class="zone-modal-info"><?= h($concert['organizer_name'] ?? '活動主辦方') ?></p>
+                            </div>
+                            <button class="zone-modal-close contact-modal-close" type="button" aria-label="關閉聯絡主辦方視窗">✕</button>
+                        </div>
+                        <form class="contact-email-form" data-contact-email-form>
+                            <label>
+                                <span>收件人</span>
+                                <input type="email" value="<?= h($organizerEmail) ?>" readonly>
+                            </label>
+                            <label>
+                                <span>主旨</span>
+                                <input name="subject" type="text" value="詢問：<?= h($concert['title']) ?>" required>
+                            </label>
+                            <label>
+                                <span>訊息內容</span>
+                                <textarea name="body" rows="7" placeholder="請輸入想詢問主辦方的內容" required></textarea>
+                            </label>
+                            <p class="contact-email-note">送出後將開啟裝置上的預設 Email 軟體，請在 Email 軟體中確認寄出。</p>
+                            <div class="zone-modal-footer contact-modal-footer">
+                                <button class="secondary-action contact-modal-cancel" type="button">取消</button>
+                                <button class="primary-action" type="submit">開啟 Email 並寄信</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="placeholder-card">
                 <h1>找不到演唱會資料</h1>
@@ -686,8 +731,49 @@ $isBookable = $concert && ($concert['status'] === '開放購票' || $hasAvailabl
             if (e.target === zoneModal) closeZoneModal();
         });
 
+        // Contact organizer modal
+        const contactModal = document.getElementById("contact-modal");
+        const contactEmailForm = document.querySelector("[data-contact-email-form]");
+        const organizerEmail = <?= json_encode($hasOrganizerEmail ? $organizerEmail : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+
+        function openContactModal() {
+            contactModal?.classList.remove("is-hidden");
+            document.body.style.overflow = "hidden";
+            contactEmailForm?.querySelector("textarea")?.focus();
+        }
+
+        function closeContactModal() {
+            contactModal?.classList.add("is-hidden");
+            document.body.style.overflow = "";
+        }
+
+        document.querySelector("[data-open-contact-modal]")?.addEventListener("click", openContactModal);
+        document.querySelectorAll(".contact-modal-close, .contact-modal-cancel").forEach((element) => {
+            element.addEventListener("click", closeContactModal);
+        });
+
+        contactModal?.addEventListener("click", (event) => {
+            if (event.target === contactModal) closeContactModal();
+        });
+
+        contactEmailForm?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const formData = new FormData(contactEmailForm);
+            const subject = encodeURIComponent(formData.get("subject") || "");
+            const body = encodeURIComponent(formData.get("body") || "");
+            window.location.href = `mailto:${organizerEmail}?subject=${subject}&body=${body}`;
+            closeContactModal();
+        });
+
         document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") closeZoneModal();
+            if (e.key === "Escape") {
+                if (contactModal && !contactModal.classList.contains("is-hidden")) {
+                    closeContactModal();
+                    return;
+                }
+
+                closeZoneModal();
+            }
         });
     </script>
 </body>

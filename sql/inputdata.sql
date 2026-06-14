@@ -107,7 +107,7 @@ VALUES
 INSERT INTO Organizer
     (organizer_id, organizer_name, contact_person, contact_email, contact_phone, organizer_address, note)
 VALUES
-    (1, '幸福娛樂股份有限公司', '王幸福', 'happy@example.com', '02-2345-6789', '台北市信義區幸福路 1 號', '負責大型流行音樂與跨界合作活動。'),
+    (1, '幸福娛樂股份有限公司', '李仕祈', 'chris94502@gmail.com', '02-2345-6789', '台北市信義區幸福路 1 號', '負責大型流行音樂與跨界合作活動。'),
     (2, '晴天活動企劃', '陳婉晴', 'sunny@example.com', '02-8765-4321', '台北市松山區南京東路四段 2 號', '粉絲見面會與小型巡迴活動主辦。'),
     (3, 'Final Call Global', 'Alex Chen', 'finalcall@example.com', '+1-212-555-0199', 'New York, NY, United States', '海外場館與國際巡演窗口。');
 
