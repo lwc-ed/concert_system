@@ -1,5 +1,38 @@
 USE concert_system;
 
+-- Keep older local databases compatible with the latest payment page.
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS ensure_order_checkout_columns $$
+
+CREATE PROCEDURE ensure_order_checkout_columns()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'Orders'
+          AND COLUMN_NAME = 'payment_method'
+    ) THEN
+        ALTER TABLE Orders ADD COLUMN payment_method VARCHAR(30) NULL AFTER status;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'Orders'
+          AND COLUMN_NAME = 'delivery_method'
+    ) THEN
+        ALTER TABLE Orders ADD COLUMN delivery_method VARCHAR(30) NULL AFTER payment_method;
+    END IF;
+END $$
+
+CALL ensure_order_checkout_columns() $$
+DROP PROCEDURE ensure_order_checkout_columns $$
+
+DELIMITER ;
+
 -- Re-runnable mock data seed.
 -- If teammates already imported an older inputdata.sql, run this file again to refresh
 -- Concert / ShowDate / Seat data to match the current frontend prototype.
@@ -300,12 +333,12 @@ CALL append_mock_seats(302, '二樓座席2', 9000, 9, 'sold');
 -- Mock order data for manager Order Management / Order Detail / Sales Report.
 -- These rows depend on the users, promo codes, shows and seats created above.
 INSERT INTO Orders
-    (order_id, user_id, show_id, promo_id, total_price, status, created_at)
+    (order_id, user_id, show_id, promo_id, total_price, status, payment_method, delivery_method, created_at)
 VALUES
-    (1, 2, 102, 1, 8500, 'paid', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    (2, 2, 301, NULL, 72000, 'pending_payment', DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
-    (3, 2, 302, 2, 71500, 'pending_payment', DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
-    (4, 2, 301, NULL, 100000, 'cancelled', DATE_SUB(NOW(), INTERVAL 3 DAY));
+    (1, 2, 102, 1, 8500, 'paid', 'credit_card', 'ibon', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (2, 2, 301, NULL, 72000, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
+    (3, 2, 302, 2, 71500, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
+    (4, 2, 301, NULL, 100000, 'cancelled', NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 DAY));
 
 INSERT INTO Ticket
     (order_id, seat_id, real_name, id_number)
