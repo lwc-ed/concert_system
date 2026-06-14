@@ -89,6 +89,23 @@ body {
     font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
 }
 
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.login-button,
+.primary-action,
+.ticket-link,
+.secondary-action,
+.disabled-action,
+.seat-zone-action,
+.show-select-action,
+.placeholder-link,
+.auth-submit,
+.danger-action {
+    font-size: max(16px, 1em) !important;
+}
+
 a {
     color: inherit;
     text-decoration: none;
