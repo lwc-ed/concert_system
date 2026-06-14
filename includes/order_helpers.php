@@ -19,6 +19,8 @@ function archiveCancelledTickets(PDO $pdo, int $orderId): void
          WHERE ticket.order_id = :order_id"
     );
     $archiveStmt->execute([':order_id' => $orderId]);
+}
+
 function abandonPendingOrderAndReleaseSeats(PDO $pdo, int $orderId, int $customerId): bool
 {
     $pdo->beginTransaction();
