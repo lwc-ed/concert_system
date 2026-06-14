@@ -129,6 +129,14 @@ $errors = [];
 $notice = '';
 $selectedPaymentMethod = (string) ($_POST['payment_method'] ?? 'credit_card');
 $selectedDeliveryMethod = (string) ($_POST['delivery_method'] ?? 'ibon');
+$paymentFieldValues = [
+    'card_number' => trim((string) ($_POST['card_number'] ?? '')),
+    'card_expiry' => trim((string) ($_POST['card_expiry'] ?? '')),
+    'card_cvv' => trim((string) ($_POST['card_cvv'] ?? '')),
+    'card_name' => trim((string) ($_POST['card_name'] ?? '')),
+    'atm_bank_code' => trim((string) ($_POST['atm_bank_code'] ?? '')),
+    'atm_account_note' => trim((string) ($_POST['atm_account_note'] ?? '')),
+];
 
 if ($pdo === null) {
     $errors[] = '資料庫連線失敗，請檢查 MySQL 與 includes/db_config.php 設定。';
@@ -148,6 +156,25 @@ if ($pdo === null) {
 
             if (!in_array($selectedDeliveryMethod, $allowedDeliveryMethods, true)) {
                 $errors[] = '請選擇有效的配送方式。';
+            }
+
+            $requiredPaymentFields = [
+                'credit_card' => [
+                    'card_number' => '信用卡卡號',
+                    'card_expiry' => '有效期限',
+                    'card_cvv' => '認證碼',
+                    'card_name' => '持卡人姓名',
+                ],
+                'atm_transfer' => [
+                    'atm_bank_code' => '銀行代碼',
+                    'atm_account_note' => '轉帳帳號或備註',
+                ],
+            ];
+
+            foreach ($requiredPaymentFields[$selectedPaymentMethod] ?? [] as $fieldName => $fieldLabel) {
+                if ($paymentFieldValues[$fieldName] === '') {
+                    $errors[] = '請輸入' . $fieldLabel . '。';
+                }
             }
 
             if (!$errors) {
@@ -335,16 +362,6 @@ if ($pdo === null) {
                     <div class="auth-alert auth-success" data-order-countdown data-order-id="<?= h($order['order_id']) ?>" data-seconds="<?= h($paymentSecondsRemaining) ?>">
                         付款倒數：<strong data-countdown-text><?= h(gmdate('i:s', $paymentSecondsRemaining)) ?></strong>
                     </div>
-                    <form method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" class="payment-card-form">
-                        <div class="member-section-title payment-form-title">
-                            <p>Credit Card</p>
-                            <h2>信用卡付款</h2>
-                        </div>
-
-                        <div class="payment-card-grid">
-                            <label class="payment-card-full">
-                                <span>信用卡卡號</span>
-                                <input type="text" name="card_number" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456" required>
                     <form method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" class="payment-choice-form">
                         <fieldset class="payment-choice-group">
                             <legend>付款方式</legend>
@@ -358,10 +375,10 @@ if ($pdo === null) {
                                     支援 VISA、Mastercard、JCB 與銀聯卡。本頁為專題模擬付款，輸入資料不會被儲存。
                                 </span>
                                 <span class="payment-method-fields" data-payment-fields="credit_card">
-                                    <input type="text" name="card_number" placeholder="信用卡卡號">
-                                    <input type="text" name="card_expiry" placeholder="有效期限 MM/YY">
-                                    <input type="text" name="card_cvv" placeholder="認證碼">
-                                    <input type="text" name="card_name" placeholder="持卡人姓名">
+                                    <input type="text" name="card_number" value="<?= h($paymentFieldValues['card_number']) ?>" placeholder="信用卡卡號" data-required-payment-field>
+                                    <input type="text" name="card_expiry" value="<?= h($paymentFieldValues['card_expiry']) ?>" placeholder="有效期限 MM/YY" data-required-payment-field>
+                                    <input type="text" name="card_cvv" value="<?= h($paymentFieldValues['card_cvv']) ?>" placeholder="認證碼" data-required-payment-field>
+                                    <input type="text" name="card_name" value="<?= h($paymentFieldValues['card_name']) ?>" placeholder="持卡人姓名" data-required-payment-field>
                                 </span>
                             </label>
 
@@ -374,8 +391,8 @@ if ($pdo === null) {
                                     系統將產生專屬虛擬帳號。請於期限內完成轉帳，逾期未付款時訂單可能被取消。
                                 </span>
                                 <span class="payment-method-fields" data-payment-fields="atm_transfer">
-                                    <input type="text" name="atm_bank_code" placeholder="銀行代碼，例如 822">
-                                    <input type="text" name="atm_account_note" placeholder="轉帳帳號或備註">
+                                    <input type="text" name="atm_bank_code" value="<?= h($paymentFieldValues['atm_bank_code']) ?>" placeholder="銀行代碼，例如 822" data-required-payment-field>
+                                    <input type="text" name="atm_account_note" value="<?= h($paymentFieldValues['atm_account_note']) ?>" placeholder="轉帳帳號或備註" data-required-payment-field>
                                 </span>
                             </label>
                         </fieldset>
@@ -461,16 +478,38 @@ if ($pdo === null) {
         });
         const paymentMethodInputs = document.querySelectorAll('input[name="payment_method"]');
         const paymentMethodFields = document.querySelectorAll('[data-payment-fields]');
+        const paymentForm = document.querySelector('.payment-choice-form');
 
         function updatePaymentMethodFields() {
             const selectedMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
 
             paymentMethodFields.forEach((fields) => {
-                fields.hidden = fields.dataset.paymentFields !== selectedMethod;
+                const isSelected = fields.dataset.paymentFields === selectedMethod;
+                fields.hidden = !isSelected;
+                fields.querySelectorAll('[data-required-payment-field]').forEach((input) => {
+                    input.disabled = !isSelected;
+                    input.required = isSelected;
+                    input.setCustomValidity('');
+                });
             });
         }
 
         paymentMethodInputs.forEach((input) => input.addEventListener('change', updatePaymentMethodFields));
+        paymentForm?.addEventListener('submit', (event) => {
+            const selectedFields = document.querySelector('[data-payment-fields]:not([hidden])');
+            let firstBlankInput = null;
+
+            selectedFields?.querySelectorAll('[data-required-payment-field]').forEach((input) => {
+                const isBlank = input.value.trim() === '';
+                input.setCustomValidity(isBlank ? '此欄位不能空白。' : '');
+                firstBlankInput ??= isBlank ? input : null;
+            });
+
+            if (firstBlankInput) {
+                event.preventDefault();
+                firstBlankInput.reportValidity();
+            }
+        });
         updatePaymentMethodFields();
     </script>
 </body>
