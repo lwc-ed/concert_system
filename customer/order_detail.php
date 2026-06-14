@@ -155,12 +155,12 @@ if ($pdo === null) {
         cancelExpiredPendingOrders($pdo, $customerId);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_order') {
-            if (cancelPendingOrderAndReleaseSeats($pdo, $orderId, $customerId)) {
+            if (cancelOrderAndReleaseSeats($pdo, $orderId, $customerId)) {
                 header('Location: order_detail.php?order_id=' . $orderId . '&cancelled=1');
                 exit;
             }
 
-            $errors[] = '只有待付款訂單可以取消。';
+            $errors[] = '此訂單目前無法取消，請確認訂單是否仍為可取消狀態。';
         }
 
         if (isset($_GET['cancelled']) && $_GET['cancelled'] === '1') {
@@ -333,8 +333,8 @@ if ($pdo === null) {
                     <?php if ($order['status'] === 'pending_payment'): ?>
                         <a class="placeholder-link" href="payment.php?order_id=<?= h($order['order_id']) ?>">前往付款</a>
                     <?php endif; ?>
-                    <?php if ($order['status'] === 'pending_payment'): ?>
-                        <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" onsubmit="return confirm('確定要取消此未付款訂單嗎？');">
+                    <?php if ($order['status'] !== 'cancelled'): ?>
+                        <form method="post" action="order_detail.php?order_id=<?= h($order['order_id']) ?>" class="inline-action-form" onsubmit="return confirm('確定要取消此訂單嗎？');">
                             <input type="hidden" name="action" value="cancel_order">
                             <button class="secondary-action danger-action" type="submit">取消訂票</button>
                         </form>
