@@ -55,6 +55,8 @@ if ($pdo === null) {
             $birthDate = trim($_POST['birth_date'] ?? '');
             $phoneNum = trim($_POST['phone_num'] ?? '');
             $userAddress = trim($_POST['user_address'] ?? '');
+            $newPassword = (string) ($_POST['new_password'] ?? '');
+            $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
             $member['email'] = $email;
             $member['birth_date'] = $birthDate;
@@ -71,6 +73,10 @@ if ($pdo === null) {
                 $errors[] = '電話號碼不可超過 20 個字。';
             } elseif (textLength($userAddress) > 255) {
                 $errors[] = '地址不可超過 255 個字。';
+            } elseif ($newPassword !== '' && textLength($newPassword) < 6) {
+                $errors[] = '新密碼至少需要 6 個字。';
+            } elseif ($newPassword !== $confirmPassword) {
+                $errors[] = '兩次輸入的新密碼不一致，請重新輸入。';
             }
 
             if (!$errors) {
@@ -92,21 +98,31 @@ if ($pdo === null) {
             }
 
             if (!$errors) {
-                $updateStatement = $pdo->prepare(
-                    'UPDATE `User`
-                     SET birth_date = :birth_date,
-                         phone_num = :phone_num,
-                         email = :email,
-                         user_address = :user_address
-                     WHERE user_id = :user_id AND role = "customer"'
-                );
-                $updateStatement->execute([
+                $updateFields = [
+                    'birth_date = :birth_date',
+                    'phone_num = :phone_num',
+                    'email = :email',
+                    'user_address = :user_address',
+                ];
+                $updateParams = [
                     'birth_date' => $birthDate,
                     'phone_num' => $phoneNum,
                     'email' => $email,
                     'user_address' => $userAddress !== '' ? $userAddress : null,
                     'user_id' => $customerId,
-                ]);
+                ];
+
+                if ($newPassword !== '') {
+                    $updateFields[] = 'password = :password';
+                    $updateParams['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
+                }
+
+                $updateStatement = $pdo->prepare(
+                    'UPDATE `User`
+                     SET ' . implode(', ', $updateFields) . '
+                     WHERE user_id = :user_id AND role = "customer"'
+                );
+                $updateStatement->execute($updateParams);
 
                 header('Location: member.php?updated=1');
                 exit;
@@ -185,15 +201,44 @@ if ($pdo === null) {
                     <label for="user_address">地址</label>
                     <input id="user_address" name="user_address" type="text" value="<?= h($member['user_address']) ?>" maxlength="255" autocomplete="street-address">
 
+                    <label for="new_password">密碼</label>
+                    <input id="new_password" name="new_password" type="password" placeholder="********" minlength="6" autocomplete="new-password" aria-describedby="password-note">
+
+                    <div class="member-confirm-password" id="confirm-password-row">
+                        <label for="confirm_password">再次輸入密碼</label>
+                        <input id="confirm_password" name="confirm_password" type="password" placeholder="請再次輸入新密碼" minlength="6" autocomplete="new-password">
+                    </div>
+
                     <div class="member-edit-actions">
                         <a class="secondary-action" href="member.php">取消</a>
                         <button class="auth-submit" type="submit">儲存會員資料</button>
                     </div>
                 </form>
 
-                <p class="member-security-note" id="readonly-note">帳號、姓名與身分證字號僅供顯示，不可修改。密碼不會從資料庫顯示於頁面。</p>
+                <p class="member-security-note" id="readonly-note">帳號、姓名與身分證字號僅供顯示，不可修改。</p>
+                <p class="member-security-note" id="password-note">密碼欄位的星號是安全遮罩；不修改密碼時請保持空白。</p>
             <?php endif; ?>
         </section>
     </main>
+    <script>
+        const newPasswordInput = document.getElementById('new_password');
+        const confirmPasswordRow = document.getElementById('confirm-password-row');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+
+        function updateConfirmPasswordVisibility() {
+            const shouldShow = newPasswordInput.value.length > 0;
+            confirmPasswordRow.hidden = !shouldShow;
+            confirmPasswordInput.required = shouldShow;
+
+            if (!shouldShow) {
+                confirmPasswordInput.value = '';
+            }
+        }
+
+        if (newPasswordInput && confirmPasswordRow && confirmPasswordInput) {
+            newPasswordInput.addEventListener('input', updateConfirmPasswordVisibility);
+            updateConfirmPasswordVisibility();
+        }
+    </script>
 </body>
 </html>

@@ -47,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $registerError = '電話號碼不可超過 20 個字。';
     } elseif (textLength($idNumber) > 20) {
         $registerError = '身分證字號不可超過 20 個字。';
+    } elseif (!preg_match('/^[A-Za-z]/', $idNumber)) {
+        $registerError = '身分證字號首字必須為英文字母。';
     } elseif (textLength($userAddress) > 255) {
         $registerError = '地址不可超過 255 個字。';
     } elseif (textLength($password) < 6) {
@@ -153,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input id="phone_num" name="phone_num" type="tel" placeholder="請輸入電話號碼" autocomplete="tel" value="<?= h($_POST['phone_num'] ?? '') ?>" maxlength="20" required>
 
                 <label for="id_number">身分證字號</label>
-                <input id="id_number" name="id_number" type="text" placeholder="請輸入身分證字號或護照號碼" value="<?= h($_POST['id_number'] ?? '') ?>" maxlength="20" required>
+                <input id="id_number" name="id_number" type="text" placeholder="請輸入身分證字號或護照號碼，首字需為英文字母" value="<?= h($_POST['id_number'] ?? '') ?>" maxlength="20" pattern="[A-Za-z].*" title="第一個字元請輸入英文字母" required>
 
                 <label for="user_address">地址</label>
                 <input id="user_address" name="user_address" type="text" placeholder="可留空" autocomplete="street-address" value="<?= h($_POST['user_address'] ?? '') ?>" maxlength="255">
