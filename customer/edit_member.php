@@ -30,13 +30,15 @@ $customerId = (int) $_SESSION['customer_id'];
 $today = date('Y-m-d');
 $member = null;
 $errors = [];
+$passwordErrors = [];
+$openPasswordModal = false;
 
 if ($pdo === null) {
     $errors[] = '目前無法連線到資料庫，請確認 MAMP / MySQL 已啟動，且 includes/db_config.php 設定正確。';
 } else {
     try {
         $memberStatement = $pdo->prepare(
-            'SELECT username, real_name, birth_date, phone_num, id_number, email, user_address
+            'SELECT username, real_name, birth_date, phone_num, id_number, email, user_address, password
              FROM `User`
              WHERE user_id = :user_id AND role = "customer"
              LIMIT 1'
@@ -51,12 +53,48 @@ if ($pdo === null) {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $action = (string) ($_POST['action'] ?? 'update_profile');
+
+            if ($action === 'change_password') {
+                $openPasswordModal = true;
+                $currentPassword = (string) ($_POST['current_password'] ?? '');
+                $newPassword = (string) ($_POST['new_password'] ?? '');
+                $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+
+                if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+                    $passwordErrors[] = '請完整填寫目前密碼、新密碼與確認新密碼。';
+                } else {
+                    $currentPasswordMatches = password_verify($currentPassword, $member['password'])
+                        || hash_equals((string) $member['password'], $currentPassword);
+
+                    if (!$currentPasswordMatches) {
+                        $passwordErrors[] = '目前密碼不正確，請重新輸入。';
+                    } elseif (textLength($newPassword) < 6) {
+                        $passwordErrors[] = '新密碼至少需要 6 個字。';
+                    } elseif ($newPassword !== $confirmPassword) {
+                        $passwordErrors[] = '新密碼與確認新密碼不一致，請重新輸入。';
+                    }
+                }
+
+                if (!$passwordErrors) {
+                    $passwordStatement = $pdo->prepare(
+                        'UPDATE `User`
+                         SET password = :password
+                         WHERE user_id = :user_id AND role = "customer"'
+                    );
+                    $passwordStatement->execute([
+                        'password' => password_hash($newPassword, PASSWORD_DEFAULT),
+                        'user_id' => $customerId,
+                    ]);
+
+                    header('Location: member.php?updated=1');
+                    exit;
+                }
+            } else {
             $email = trim($_POST['email'] ?? '');
             $birthDate = trim($_POST['birth_date'] ?? '');
             $phoneNum = trim($_POST['phone_num'] ?? '');
             $userAddress = trim($_POST['user_address'] ?? '');
-            $newPassword = (string) ($_POST['new_password'] ?? '');
-            $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
             $member['email'] = $email;
             $member['birth_date'] = $birthDate;
@@ -73,10 +111,6 @@ if ($pdo === null) {
                 $errors[] = '電話號碼不可超過 20 個字。';
             } elseif (textLength($userAddress) > 255) {
                 $errors[] = '地址不可超過 255 個字。';
-            } elseif ($newPassword !== '' && textLength($newPassword) < 6) {
-                $errors[] = '新密碼至少需要 6 個字。';
-            } elseif ($newPassword !== $confirmPassword) {
-                $errors[] = '兩次輸入的新密碼不一致，請重新輸入。';
             }
 
             if (!$errors) {
@@ -98,34 +132,25 @@ if ($pdo === null) {
             }
 
             if (!$errors) {
-                $updateFields = [
-                    'birth_date = :birth_date',
-                    'phone_num = :phone_num',
-                    'email = :email',
-                    'user_address = :user_address',
-                ];
-                $updateParams = [
+                $updateStatement = $pdo->prepare(
+                    'UPDATE `User`
+                     SET birth_date = :birth_date,
+                         phone_num = :phone_num,
+                         email = :email,
+                         user_address = :user_address
+                     WHERE user_id = :user_id AND role = "customer"'
+                );
+                $updateStatement->execute([
                     'birth_date' => $birthDate,
                     'phone_num' => $phoneNum,
                     'email' => $email,
                     'user_address' => $userAddress !== '' ? $userAddress : null,
                     'user_id' => $customerId,
-                ];
-
-                if ($newPassword !== '') {
-                    $updateFields[] = 'password = :password';
-                    $updateParams['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
-                }
-
-                $updateStatement = $pdo->prepare(
-                    'UPDATE `User`
-                     SET ' . implode(', ', $updateFields) . '
-                     WHERE user_id = :user_id AND role = "customer"'
-                );
-                $updateStatement->execute($updateParams);
+                ]);
 
                 header('Location: member.php?updated=1');
                 exit;
+            }
             }
         }
     } catch (PDOException $exception) {
@@ -180,6 +205,8 @@ if ($pdo === null) {
                 </div>
 
                 <form class="auth-form member-edit-form" action="edit_member.php" method="post">
+                    <input type="hidden" name="action" value="update_profile">
+
                     <label for="username">帳號</label>
                     <input id="username" type="text" value="<?= h($member['username']) ?>" readonly aria-describedby="readonly-note">
 
@@ -201,12 +228,12 @@ if ($pdo === null) {
                     <label for="user_address">地址</label>
                     <input id="user_address" name="user_address" type="text" value="<?= h($member['user_address']) ?>" maxlength="255" autocomplete="street-address">
 
-                    <label for="new_password">密碼</label>
-                    <input id="new_password" name="new_password" type="password" placeholder="********" minlength="6" autocomplete="new-password" aria-describedby="password-note">
-
-                    <div class="member-confirm-password" id="confirm-password-row">
-                        <label for="confirm_password">再次輸入密碼</label>
-                        <input id="confirm_password" name="confirm_password" type="password" placeholder="請再次輸入新密碼" minlength="6" autocomplete="new-password">
+                    <div class="member-password-action">
+                        <div>
+                            <strong>密碼</strong>
+                            <span>********</span>
+                        </div>
+                        <button class="secondary-action" id="open-password-modal" type="button">修改密碼</button>
                     </div>
 
                     <div class="member-edit-actions">
@@ -216,29 +243,77 @@ if ($pdo === null) {
                 </form>
 
                 <p class="member-security-note" id="readonly-note">帳號、姓名與身分證字號僅供顯示，不可修改。</p>
-                <p class="member-security-note" id="password-note">密碼欄位的星號是安全遮罩；不修改密碼時請保持空白。</p>
             <?php endif; ?>
         </section>
     </main>
+
+    <?php if ($member): ?>
+        <div class="password-modal-overlay <?= $openPasswordModal ? '' : 'is-hidden' ?>" id="password-modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+            <section class="password-modal">
+                <div class="password-modal-header">
+                    <div>
+                        <p class="member-kicker">Password</p>
+                        <h2 id="password-modal-title">修改密碼</h2>
+                    </div>
+                    <button class="password-modal-close" type="button" aria-label="關閉修改密碼視窗">✕</button>
+                </div>
+
+                <?php if ($passwordErrors): ?>
+                    <div class="member-alert">
+                        <?php foreach ($passwordErrors as $error): ?>
+                            <p><?= h($error) ?></p>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form class="auth-form" action="edit_member.php" method="post">
+                    <input type="hidden" name="action" value="change_password">
+
+                    <label for="current_password">目前密碼</label>
+                    <input id="current_password" name="current_password" type="password" autocomplete="current-password" required>
+
+                    <label for="new_password">新密碼</label>
+                    <input id="new_password" name="new_password" type="password" minlength="6" autocomplete="new-password" required>
+
+                    <label for="confirm_password">確認新密碼</label>
+                    <input id="confirm_password" name="confirm_password" type="password" minlength="6" autocomplete="new-password" required>
+
+                    <div class="member-edit-actions">
+                        <button class="secondary-action password-modal-cancel" type="button">取消</button>
+                        <button class="auth-submit" type="submit">確認修改密碼</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    <?php endif; ?>
+
     <script>
-        const newPasswordInput = document.getElementById('new_password');
-        const confirmPasswordRow = document.getElementById('confirm-password-row');
-        const confirmPasswordInput = document.getElementById('confirm_password');
+        const passwordModal = document.getElementById('password-modal');
+        const openPasswordModalButton = document.getElementById('open-password-modal');
+        const closePasswordModalButtons = document.querySelectorAll('.password-modal-close, .password-modal-cancel');
 
-        function updateConfirmPasswordVisibility() {
-            const shouldShow = newPasswordInput.value.length > 0;
-            confirmPasswordRow.hidden = !shouldShow;
-            confirmPasswordInput.required = shouldShow;
+        function closePasswordModal() {
+            passwordModal?.classList.add('is-hidden');
+        }
 
-            if (!shouldShow) {
-                confirmPasswordInput.value = '';
+        openPasswordModalButton?.addEventListener('click', () => {
+            passwordModal?.classList.remove('is-hidden');
+            document.getElementById('current_password')?.focus();
+        });
+
+        closePasswordModalButtons.forEach((button) => button.addEventListener('click', closePasswordModal));
+
+        passwordModal?.addEventListener('click', (event) => {
+            if (event.target === passwordModal) {
+                closePasswordModal();
             }
-        }
+        });
 
-        if (newPasswordInput && confirmPasswordRow && confirmPasswordInput) {
-            newPasswordInput.addEventListener('input', updateConfirmPasswordVisibility);
-            updateConfirmPasswordVisibility();
-        }
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closePasswordModal();
+            }
+        });
     </script>
 </body>
 </html>
