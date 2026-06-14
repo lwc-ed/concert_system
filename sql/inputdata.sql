@@ -33,6 +33,23 @@ DROP PROCEDURE ensure_order_checkout_columns $$
 
 DELIMITER ;
 
+CREATE TABLE IF NOT EXISTS CancelledTicket (
+    cancelled_ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    show_id INT NOT NULL,
+    seat_id INT NULL,
+    seat_number VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    real_name VARCHAR(100) NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
+    cancelled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cancelled_ticket_show (show_id),
+    INDEX idx_cancelled_ticket_order (order_id),
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (show_id) REFERENCES ShowDate(show_id) ON DELETE CASCADE,
+    FOREIGN KEY (seat_id) REFERENCES Seat(seat_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- Re-runnable mock data seed.
 -- If teammates already imported an older inputdata.sql, run this file again to refresh
 -- Concert / ShowDate / Seat data to match the current frontend prototype.
@@ -40,6 +57,7 @@ DELIMITER ;
 USE concert_system;
 
 SET FOREIGN_KEY_CHECKS = 0;
+DELETE FROM CancelledTicket;
 DELETE FROM Ticket;
 DELETE FROM Orders;
 DELETE FROM PromoCode;
@@ -48,6 +66,7 @@ DELETE FROM ShowDate;
 DELETE FROM Concert;
 DELETE FROM Organizer;
 
+TRUNCATE TABLE CancelledTicket;
 TRUNCATE TABLE Ticket;
 TRUNCATE TABLE Orders;
 TRUNCATE TABLE Seat;
@@ -59,6 +78,7 @@ TRUNCATE TABLE User;
 SET FOREIGN_KEY_CHECKS = 1;
 
 ALTER TABLE Ticket AUTO_INCREMENT = 1;
+ALTER TABLE CancelledTicket AUTO_INCREMENT = 1;
 ALTER TABLE Orders AUTO_INCREMENT = 1;
 ALTER TABLE PromoCode AUTO_INCREMENT = 1;
 ALTER TABLE Seat AUTO_INCREMENT = 1;
@@ -403,6 +423,22 @@ SET status = 'available'
 WHERE seat_id IN (
     SELECT seat_id FROM Ticket WHERE order_id = 4
 );
+
+INSERT INTO CancelledTicket
+    (order_id, show_id, seat_id, seat_number, price, real_name, id_number, cancelled_at)
+SELECT
+    orders_table.order_id,
+    orders_table.show_id,
+    seat.seat_id,
+    seat.seat_number,
+    seat.price,
+    ticket.real_name,
+    ticket.id_number,
+    orders_table.created_at
+FROM Ticket ticket
+INNER JOIN Orders orders_table ON orders_table.order_id = ticket.order_id
+INNER JOIN Seat seat ON seat.seat_id = ticket.seat_id
+WHERE ticket.order_id = 4;
 
 -- Cancelled orders release their seats by removing Ticket rows. Keeping a
 -- cancelled Ticket would conflict with Ticket.seat_id UNIQUE when the same

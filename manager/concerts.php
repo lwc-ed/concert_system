@@ -327,8 +327,17 @@ $formData = [
             margin-top: 34px;
         }
 
+        .manager-concerts,
+        .manager-concerts *,
+        .manager-concerts *::before,
+        .manager-concerts *::after {
+            box-sizing: border-box;
+        }
+
         .concerts-panel {
             width: 100%;
+            max-width: 100%;
+            overflow: hidden;
             max-width: 1100px;
             margin: 0 auto;
         }
@@ -337,24 +346,46 @@ $formData = [
         .concert-form {
             display: grid;
             gap: 18px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .concerts-layout > *,
+        .concert-form-grid > * {
+            min-width: 0;
+            max-width: 100%;
         }
 
         .concert-form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
+            gap: 18px 24px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
         }
 
         .concert-form label {
             display: grid;
             gap: 7px;
+            min-width: 0;
+            max-width: 100%;
             font-weight: 800;
         }
 
         .concert-form input,
         .concert-form select,
-        .concert-form textarea {
+        .concert-form textarea,
+        .concert-form button {
             width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .concert-form input,
+        .concert-form select,
+        .concert-form textarea {
             min-height: 44px;
             padding: 10px 12px;
             border: 1px solid var(--line);
@@ -386,9 +417,18 @@ $formData = [
             flex-wrap: wrap;
             gap: 10px;
             align-items: center;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .concert-actions button {
+            width: auto;
         }
 
         .table-wrap {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
             overflow-x: auto;
             border: 1px solid var(--line);
             border-radius: 8px;
@@ -449,6 +489,10 @@ $formData = [
         @media (max-width: 820px) {
             .concert-form-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .field-wide {
+                grid-column: auto;
             }
         }
     </style>

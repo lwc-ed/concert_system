@@ -120,12 +120,13 @@ if (!$dbReady) {
                 COUNT(DISTINCT ticket.ticket_id) AS total_tickets,
                 COUNT(DISTINCT CASE WHEN orders_table.status = 'pending_payment' THEN ticket.ticket_id END) AS pending_tickets,
                 COUNT(DISTINCT CASE WHEN orders_table.status = 'paid' THEN ticket.ticket_id END) AS paid_tickets,
-                COUNT(DISTINCT CASE WHEN orders_table.status = 'cancelled' THEN ticket.ticket_id END) AS cancelled_tickets
+                COUNT(DISTINCT cancelled_ticket.cancelled_ticket_id) AS cancelled_tickets
              FROM ShowDate show_date
              INNER JOIN Concert concert ON concert.concert_id = show_date.concert_id
              LEFT JOIN Seat seat ON seat.show_id = show_date.show_id
              LEFT JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
              LEFT JOIN Orders orders_table ON orders_table.order_id = ticket.order_id
+             LEFT JOIN CancelledTicket cancelled_ticket ON cancelled_ticket.show_id = show_date.show_id
              GROUP BY show_date.show_id, show_date.show_datetime, concert.title
              ORDER BY show_date.show_datetime, show_date.show_id"
         );
