@@ -1,5 +1,26 @@
 <?php
 
+function archiveCancelledTickets(PDO $pdo, int $orderId): void
+{
+    $archiveStmt = $pdo->prepare(
+        "INSERT INTO CancelledTicket
+            (order_id, show_id, seat_id, seat_number, price, real_name, id_number)
+         SELECT
+            orders_table.order_id,
+            orders_table.show_id,
+            seat.seat_id,
+            seat.seat_number,
+            seat.price,
+            ticket.real_name,
+            ticket.id_number
+         FROM Ticket ticket
+         INNER JOIN Orders orders_table ON orders_table.order_id = ticket.order_id
+         INNER JOIN Seat seat ON seat.seat_id = ticket.seat_id
+         WHERE ticket.order_id = :order_id"
+    );
+    $archiveStmt->execute([':order_id' => $orderId]);
+}
+
 function cancelPendingOrderAndReleaseSeats(PDO $pdo, int $orderId, ?int $customerId = null, bool $requireExpired = false): bool
 {
     $pdo->beginTransaction();
@@ -40,6 +61,8 @@ function cancelPendingOrderAndReleaseSeats(PDO $pdo, int $orderId, ?int $custome
         );
         $ticketStmt->execute([':order_id' => $orderId]);
         $seatIds = array_map('intval', $ticketStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        archiveCancelledTickets($pdo, $orderId);
 
         $seatStmt = $pdo->prepare(
             "UPDATE Seat
@@ -112,6 +135,8 @@ function cancelOrderAndReleaseSeats(PDO $pdo, int $orderId, ?int $customerId = n
         );
         $ticketStmt->execute([':order_id' => $orderId]);
         $seatIds = array_map('intval', $ticketStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        archiveCancelledTickets($pdo, $orderId);
 
         $seatStmt = $pdo->prepare(
             "UPDATE Seat
