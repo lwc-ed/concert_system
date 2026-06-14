@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../includes/db_config.php';
+require_once __DIR__ . '/../includes/order_expiration.php';
 
 if (!isset($_SESSION['customer_id'])) {
     $redirect = 'payment.php';
@@ -109,6 +110,8 @@ if ($pdo === null) {
     $errors[] = '缺少訂單編號，請回會員中心查看訂單。';
 } else {
     try {
+        cancelExpiredPendingOrders($pdo, $customerId);
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
 
@@ -271,6 +274,10 @@ if ($pdo === null) {
                 </div>
 
                 <?php if ($order['status'] === 'pending_payment'): ?>
+                    <?php $paymentSecondsRemaining = orderPaymentSecondsRemaining($order['created_at']); ?>
+                    <div class="auth-alert auth-success" data-order-countdown data-order-id="<?= h($order['order_id']) ?>" data-seconds="<?= h($paymentSecondsRemaining) ?>">
+                        付款倒數：<strong data-countdown-text><?= h(gmdate('i:s', $paymentSecondsRemaining)) ?></strong>
+                    </div>
                     <form method="post" action="payment.php?order_id=<?= h($order['order_id']) ?>" class="payment-card-form">
                         <div class="member-section-title payment-form-title">
                             <p>Credit Card</p>
@@ -300,7 +307,7 @@ if ($pdo === null) {
 
                         <div class="payment-actions">
                             <button class="placeholder-link payment-submit-button" type="submit">完成付款</button>
-                            <a class="secondary-action payment-delay-button" href="member.php">延後付款</a>
+                            <a class="secondary-action payment-delay-button" href="order_detail.php?order_id=<?= h($order['order_id']) ?>">延後付款</a>
                         </div>
                     </form>
                 <?php else: ?>
@@ -313,5 +320,44 @@ if ($pdo === null) {
             <?php endif; ?>
         </section>
     </main>
+    <script>
+        document.querySelectorAll('[data-order-countdown]').forEach((timer) => {
+            let seconds = Number.parseInt(timer.dataset.seconds || '0', 10);
+            const orderId = timer.dataset.orderId;
+            const text = timer.querySelector('[data-countdown-text]');
+
+            function render() {
+                const minutes = Math.floor(Math.max(seconds, 0) / 60).toString().padStart(2, '0');
+                const remainSeconds = (Math.max(seconds, 0) % 60).toString().padStart(2, '0');
+                if (text) {
+                    text.textContent = `${minutes}:${remainSeconds}`;
+                }
+            }
+
+            async function expireOrder() {
+                if (!orderId) {
+                    window.location.reload();
+                    return;
+                }
+
+                await fetch('expire_order.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({order_id: orderId}),
+                }).catch(() => null);
+                window.location.reload();
+            }
+
+            render();
+            const intervalId = window.setInterval(() => {
+                seconds -= 1;
+                render();
+                if (seconds <= 0) {
+                    window.clearInterval(intervalId);
+                    expireOrder();
+                }
+            }, 1000);
+        });
+    </script>
 </body>
 </html>

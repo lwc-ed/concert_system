@@ -33,6 +33,7 @@ $summary = [
     'cancelled_orders' => 0,
 ];
 $showReports = [];
+$ticketStatusReports = [];
 $promoReports = [];
 $dbReady = $pdo instanceof PDO;
 
@@ -77,14 +78,26 @@ if (!$dbReady) {
                 concert.title AS concert_title,
                 COUNT(DISTINCT seat.seat_id) AS total_seats,
                 COUNT(DISTINCT CASE WHEN orders_table.status = 'paid' THEN ticket.ticket_id END) AS sold_tickets,
-                COUNT(DISTINCT CASE WHEN orders_table.status = 'paid' THEN orders_table.order_id END) AS paid_orders,
-                COALESCE(SUM(DISTINCT CASE WHEN orders_table.status = 'paid' THEN orders_table.total_price ELSE 0 END), 0) AS revenue
+                COALESCE(order_summary.paid_orders, 0) AS paid_orders,
+                COALESCE(order_summary.revenue, 0) AS revenue
              FROM ShowDate show_date
              INNER JOIN Concert concert ON concert.concert_id = show_date.concert_id
              LEFT JOIN Seat seat ON seat.show_id = show_date.show_id
              LEFT JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
              LEFT JOIN Orders orders_table ON orders_table.order_id = ticket.order_id
-             GROUP BY show_date.show_id, show_date.show_datetime, show_date.status, concert.title
+             LEFT JOIN (
+                SELECT show_id, COUNT(*) AS paid_orders, SUM(total_price) AS revenue
+                FROM Orders
+                WHERE status = 'paid'
+                GROUP BY show_id
+             ) order_summary ON order_summary.show_id = show_date.show_id
+             GROUP BY
+                show_date.show_id,
+                show_date.show_datetime,
+                show_date.status,
+                concert.title,
+                order_summary.paid_orders,
+                order_summary.revenue
              ORDER BY show_date.show_datetime, show_date.show_id"
         );
         $stmt->execute();
@@ -92,6 +105,35 @@ if (!$dbReady) {
     } catch (PDOException $exception) {
         error_log('Fetch show sales report failed: ' . $exception->getMessage());
         $errors[] = '讀取各場次銷售狀況失敗，請稍後再試。';
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT
+                show_date.show_id,
+                show_date.show_datetime,
+                concert.title AS concert_title,
+                COUNT(DISTINCT seat.seat_id) AS total_seats,
+                COUNT(DISTINCT CASE WHEN seat.status = 'available' THEN seat.seat_id END) AS available_seats,
+                COUNT(DISTINCT CASE WHEN seat.status = 'reserved' THEN seat.seat_id END) AS reserved_seats,
+                COUNT(DISTINCT CASE WHEN seat.status = 'sold' THEN seat.seat_id END) AS sold_seats,
+                COUNT(DISTINCT ticket.ticket_id) AS total_tickets,
+                COUNT(DISTINCT CASE WHEN orders_table.status = 'pending_payment' THEN ticket.ticket_id END) AS pending_tickets,
+                COUNT(DISTINCT CASE WHEN orders_table.status = 'paid' THEN ticket.ticket_id END) AS paid_tickets,
+                COUNT(DISTINCT CASE WHEN orders_table.status = 'cancelled' THEN ticket.ticket_id END) AS cancelled_tickets
+             FROM ShowDate show_date
+             INNER JOIN Concert concert ON concert.concert_id = show_date.concert_id
+             LEFT JOIN Seat seat ON seat.show_id = show_date.show_id
+             LEFT JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
+             LEFT JOIN Orders orders_table ON orders_table.order_id = ticket.order_id
+             GROUP BY show_date.show_id, show_date.show_datetime, concert.title
+             ORDER BY show_date.show_datetime, show_date.show_id"
+        );
+        $stmt->execute();
+        $ticketStatusReports = $stmt->fetchAll();
+    } catch (PDOException $exception) {
+        error_log('Fetch ticket status report failed: ' . $exception->getMessage());
+        $errors[] = '讀取票券狀態報表失敗，請稍後再試。';
     }
 
     try {
@@ -255,6 +297,61 @@ if (!$dbReady) {
                     <div class="metric-card">
                         <p>已取消訂單</p>
                         <strong><?= h($summary['cancelled_orders']) ?></strong>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h3>票券狀態報表</h3>
+                    <div class="table-wrap">
+                        <?php if ($ticketStatusReports): ?>
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>show_id</th>
+                                        <th>演唱會</th>
+                                        <th>場次時間</th>
+                                        <th>總座位數</th>
+                                        <th>available</th>
+                                        <th>reserved</th>
+                                        <th>sold</th>
+                                        <th>全部票券</th>
+                                        <th>待付款票券</th>
+                                        <th>已付款票券</th>
+                                        <th>已取消票券</th>
+                                        <th>售出率</th>
+                                        <th>保留率</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($ticketStatusReports as $ticketStatus): ?>
+                                        <?php
+                                        $totalSeats = (int) $ticketStatus['total_seats'];
+                                        $soldSeats = (int) $ticketStatus['sold_seats'];
+                                        $reservedSeats = (int) $ticketStatus['reserved_seats'];
+                                        $soldRate = $totalSeats > 0 ? round($soldSeats / $totalSeats * 100, 1) . '%' : '0%';
+                                        $reservedRate = $totalSeats > 0 ? round($reservedSeats / $totalSeats * 100, 1) . '%' : '0%';
+                                        ?>
+                                        <tr>
+                                            <td>#<?= h($ticketStatus['show_id']) ?></td>
+                                            <td><?= h($ticketStatus['concert_title']) ?></td>
+                                            <td><?= h($ticketStatus['show_datetime']) ?></td>
+                                            <td><?= h($totalSeats) ?></td>
+                                            <td><?= h((int) $ticketStatus['available_seats']) ?></td>
+                                            <td><?= h($reservedSeats) ?></td>
+                                            <td><?= h($soldSeats) ?></td>
+                                            <td><?= h((int) $ticketStatus['total_tickets']) ?></td>
+                                            <td><?= h((int) $ticketStatus['pending_tickets']) ?></td>
+                                            <td><?= h((int) $ticketStatus['paid_tickets']) ?></td>
+                                            <td><?= h((int) $ticketStatus['cancelled_tickets']) ?></td>
+                                            <td><?= h($soldRate) ?></td>
+                                            <td><?= h($reservedRate) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php else: ?>
+                            <div class="empty-row">目前沒有票券狀態資料。</div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

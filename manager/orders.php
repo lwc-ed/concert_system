@@ -13,6 +13,7 @@ if (file_exists($authGuardPath)) {
 }
 
 require_once __DIR__ . '/../includes/db_config.php';
+require_once __DIR__ . '/../includes/order_expiration.php';
 
 if (!function_exists('h')) {
     function h($value)
@@ -26,70 +27,6 @@ function positiveInt($value)
     return filter_var($value, FILTER_VALIDATE_INT, [
         'options' => ['min_range' => 1],
     ]);
-}
-
-function releaseReservedSeatsForOrders($connection, $orderIds)
-{
-    if (!$orderIds) {
-        return 0;
-    }
-
-    $placeholders = implode(', ', array_fill(0, count($orderIds), '?'));
-    $stmt = $connection->prepare(
-        "UPDATE Seat seat
-         INNER JOIN Ticket ticket ON ticket.seat_id = seat.seat_id
-         SET seat.status = 'available'
-         WHERE ticket.order_id IN ($placeholders)
-           AND seat.status = 'reserved'"
-    );
-    $stmt->execute($orderIds);
-
-    return $stmt->rowCount();
-}
-
-function cancelExpiredPendingOrders($connection)
-{
-    $cancelledCount = 0;
-
-    try {
-        $connection->beginTransaction();
-
-        // Lock expired pending orders so another request cannot pay/cancel them at the same time.
-        $stmt = $connection->prepare(
-            "SELECT order_id
-             FROM Orders
-             WHERE status = 'pending_payment'
-               AND created_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-             FOR UPDATE"
-        );
-        $stmt->execute();
-        $orderIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-
-        if ($orderIds) {
-            $placeholders = implode(', ', array_fill(0, count($orderIds), '?'));
-            $stmt = $connection->prepare(
-                "UPDATE Orders
-                 SET status = 'cancelled'
-                 WHERE status = 'pending_payment'
-                   AND order_id IN ($placeholders)"
-            );
-            $stmt->execute($orderIds);
-            $cancelledCount = $stmt->rowCount();
-
-            // Release seats that were reserved by those expired unpaid orders.
-            releaseReservedSeatsForOrders($connection, $orderIds);
-        }
-
-        $connection->commit();
-    } catch (PDOException $exception) {
-        if ($connection->inTransaction()) {
-            $connection->rollBack();
-        }
-        error_log('Auto-cancel expired orders failed: ' . $exception->getMessage());
-        throw $exception;
-    }
-
-    return $cancelledCount;
 }
 
 $errors = [];
