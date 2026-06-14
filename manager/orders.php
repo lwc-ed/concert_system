@@ -60,7 +60,8 @@ if (!$dbReady) {
         if ($autoCancelledCount > 0 && $notice === '') {
             $notice = '系統已自動取消超過 10 分鐘未付款的訂單 ' . $autoCancelledCount . ' 筆，並釋放相關座位。';
         }
-    } catch (PDOException $exception) {
+    } catch (Throwable $exception) {
+        error_log('Auto-cancel expired orders failed: ' . $exception->getMessage());
         $errors[] = '自動取消逾時訂單失敗，請稍後再試。';
     }
 
@@ -74,36 +75,13 @@ if (!$dbReady) {
                 $errors[] = '找不到要取消的訂單。';
             } else {
                 try {
-                    $pdo->beginTransaction();
-
-                    $stmt = $pdo->prepare('SELECT order_id, status FROM Orders WHERE order_id = :order_id FOR UPDATE');
-                    $stmt->execute([':order_id' => $orderId]);
-                    $order = $stmt->fetch();
-
-                    if (!$order) {
-                        $errors[] = '找不到要取消的訂單。';
-                    } elseif ($order['status'] !== 'pending_payment') {
-                        $errors[] = '只有 pending_payment 狀態的訂單可以取消。';
-                    } else {
-                        $stmt = $pdo->prepare(
-                            "UPDATE Orders
-                             SET status = 'cancelled'
-                             WHERE order_id = :order_id
-                               AND status = 'pending_payment'"
-                        );
-                        $stmt->execute([':order_id' => $orderId]);
-
-                        releaseReservedSeatsForOrders($pdo, [$orderId]);
-
-                        $pdo->commit();
+                    if (cancelPendingOrderAndReleaseSeats($pdo, $orderId)) {
                         header('Location: /concert_system/manager/orders.php?message=cancelled');
                         exit;
                     }
 
-                    if ($pdo->inTransaction()) {
-                        $pdo->rollBack();
-                    }
-                } catch (PDOException $exception) {
+                    $errors[] = '只有 pending_payment 狀態的訂單可以取消。';
+                } catch (Throwable $exception) {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
                     }

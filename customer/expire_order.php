@@ -31,7 +31,8 @@ if (!$orderId) {
 try {
     $expired = cancelExpiredPendingOrderById($pdo, $orderId, (int) $_SESSION['customer_id']);
     echo json_encode(['expired' => $expired]);
-} catch (PDOException $exception) {
+} catch (Throwable $exception) {
+    error_log('Expire order request failed: ' . $exception->getMessage());
     http_response_code(500);
     echo json_encode(['expired' => false, 'error' => 'server_error']);
 }
