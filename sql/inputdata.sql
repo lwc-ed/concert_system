@@ -247,12 +247,12 @@ CALL append_mock_seats(101, '幸福崴孟區1', 1800, 40, 'sold');
 CALL append_mock_seats(101, '幸福崴孟區2', 1800, 40, 'sold');
 CALL append_mock_seats(101, '幸福崴孟區3', 1800, 40, 'sold');
 CALL append_mock_seats(101, '幸福崴孟區4', 1800, 40, 'sold');
-CALL append_mock_seats(102, '幸福搖滾區1', 5800, 6, 'sold');
-CALL append_mock_seats(102, '幸福搖滾區2', 5800, 6, 'sold');
-CALL append_mock_seats(102, '幸福崴區1', 4200, 20, 'sold');
-CALL append_mock_seats(102, '幸福崴區2', 4200, 20, 'sold');
-CALL append_mock_seats(102, '幸福崴區3', 4200, 20, 'sold');
-CALL append_mock_seats(102, '幸福崴區4', 4200, 20, 'sold');
+CALL append_mock_seats(102, '幸福搖滾區1', 5800, 6, 'available');
+CALL append_mock_seats(102, '幸福搖滾區2', 5800, 6, 'available');
+CALL append_mock_seats(102, '幸福崴區1', 4200, 20, 'available');
+CALL append_mock_seats(102, '幸福崴區2', 4200, 20, 'available');
+CALL append_mock_seats(102, '幸福崴區3', 4200, 20, 'available');
+CALL append_mock_seats(102, '幸福崴區4', 4200, 20, 'available');
 CALL append_mock_seats(102, '幸福孟區1', 2800, 30, 'available');
 CALL append_mock_seats(102, '幸福孟區2', 2800, 30, 'available');
 CALL append_mock_seats(102, '幸福孟區3', 2800, 30, 'available');
@@ -262,60 +262,82 @@ CALL append_mock_seats(102, '幸福崴孟區2', 1800, 40, 'available');
 CALL append_mock_seats(102, '幸福崴孟區3', 1800, 40, 'available');
 CALL append_mock_seats(102, '幸福崴孟區4', 1800, 40, 'available');
 
-CALL append_mock_seats(201, '特典區1', 500, 15, 'sold');
-CALL append_mock_seats(201, '特典區2', 500, 15, 'sold');
-CALL append_mock_seats(201, '一般區1', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區2', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區3', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區4', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區5', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區6', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區7', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區8', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區9', 300, 12, 'sold');
-CALL append_mock_seats(201, '一般區10', 300, 12, 'sold');
-CALL append_mock_seats(201, '學生區1', 1, 9, 'sold');
-CALL append_mock_seats(201, '學生區2', 1, 9, 'sold');
-CALL append_mock_seats(201, '學生區3', 1, 8, 'sold');
-CALL append_mock_seats(201, '學生區4', 1, 8, 'sold');
-CALL append_mock_seats(201, '學生區5', 1, 8, 'sold');
-CALL append_mock_seats(201, '學生區6', 1, 8, 'sold');
-CALL append_mock_seats(202, '特典區1', 500, 15, 'sold');
-CALL append_mock_seats(202, '特典區2', 500, 15, 'sold');
-CALL append_mock_seats(202, '一般區1', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區2', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區3', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區4', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區5', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區6', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區7', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區8', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區9', 300, 12, 'sold');
-CALL append_mock_seats(202, '一般區10', 300, 12, 'sold');
-CALL append_mock_seats(202, '學生區1', 1, 9, 'sold');
-CALL append_mock_seats(202, '學生區2', 1, 9, 'sold');
-CALL append_mock_seats(202, '學生區3', 1, 8, 'sold');
-CALL append_mock_seats(202, '學生區4', 1, 8, 'sold');
-CALL append_mock_seats(202, '學生區5', 1, 8, 'sold');
-CALL append_mock_seats(202, '學生區6', 1, 8, 'sold');
-CALL append_mock_seats(203, '特典區1', 500, 15, 'sold');
-CALL append_mock_seats(203, '特典區2', 500, 15, 'sold');
-CALL append_mock_seats(203, '一般區1', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區2', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區3', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區4', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區5', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區6', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區7', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區8', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區9', 300, 12, 'sold');
-CALL append_mock_seats(203, '一般區10', 300, 12, 'sold');
-CALL append_mock_seats(203, '學生區1', 1, 9, 'sold');
-CALL append_mock_seats(203, '學生區2', 1, 9, 'sold');
-CALL append_mock_seats(203, '學生區3', 1, 8, 'sold');
-CALL append_mock_seats(203, '學生區4', 1, 8, 'sold');
-CALL append_mock_seats(203, '學生區5', 1, 8, 'sold');
-CALL append_mock_seats(203, '學生區6', 1, 8, 'sold');
+CALL append_mock_seats(201, '特典區1', 500, 15, 'available');
+CALL append_mock_seats(201, '特典區2', 500, 15, 'available');
+CALL append_mock_seats(201, '一般區1', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區2', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區3', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區4', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區5', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區6', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區7', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區8', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區9', 300, 12, 'available');
+CALL append_mock_seats(201, '一般區10', 300, 12, 'available');
+CALL append_mock_seats(201, '學生區1', 1, 9, 'available');
+CALL append_mock_seats(201, '學生區2', 1, 9, 'available');
+CALL append_mock_seats(201, '學生區3', 1, 8, 'available');
+CALL append_mock_seats(201, '學生區4', 1, 8, 'available');
+CALL append_mock_seats(201, '學生區5', 1, 8, 'available');
+CALL append_mock_seats(201, '學生區6', 1, 8, 'available');
+CALL append_mock_seats(202, '特典區1', 500, 15, 'available');
+CALL append_mock_seats(202, '特典區2', 500, 15, 'available');
+CALL append_mock_seats(202, '一般區1', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區2', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區3', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區4', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區5', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區6', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區7', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區8', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區9', 300, 12, 'available');
+CALL append_mock_seats(202, '一般區10', 300, 12, 'available');
+CALL append_mock_seats(202, '學生區1', 1, 9, 'available');
+CALL append_mock_seats(202, '學生區2', 1, 9, 'available');
+CALL append_mock_seats(202, '學生區3', 1, 8, 'available');
+CALL append_mock_seats(202, '學生區4', 1, 8, 'available');
+CALL append_mock_seats(202, '學生區5', 1, 8, 'available');
+CALL append_mock_seats(202, '學生區6', 1, 8, 'available');
+CALL append_mock_seats(203, '特典區1', 500, 15, 'available');
+CALL append_mock_seats(203, '特典區2', 500, 15, 'available');
+CALL append_mock_seats(203, '一般區1', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區2', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區3', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區4', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區5', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區6', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區7', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區8', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區9', 300, 12, 'available');
+CALL append_mock_seats(203, '一般區10', 300, 12, 'available');
+CALL append_mock_seats(203, '學生區1', 1, 9, 'available');
+CALL append_mock_seats(203, '學生區2', 1, 9, 'available');
+CALL append_mock_seats(203, '學生區3', 1, 8, 'available');
+CALL append_mock_seats(203, '學生區4', 1, 8, 'available');
+CALL append_mock_seats(203, '學生區5', 1, 8, 'available');
+CALL append_mock_seats(203, '學生區6', 1, 8, 'available');
+
+-- Show 102 starts with exactly half of its 372 seats sold. The two seats used
+-- by the paid mock order are included, then 184 more seats are selected.
+-- RAND(102) keeps the selected seat sample stable across repeated imports.
+UPDATE Seat
+SET status = 'sold'
+WHERE show_id = 102
+  AND seat_number IN ('幸福搖滾區1_1號', '幸福孟區1_1號');
+
+UPDATE Seat
+SET status = 'sold'
+WHERE seat_id IN (
+    SELECT seat_id
+    FROM (
+        SELECT seat_id
+        FROM Seat
+        WHERE show_id = 102
+          AND seat_number NOT IN ('幸福搖滾區1_1號', '幸福孟區1_1號')
+        ORDER BY RAND(102)
+        LIMIT 184
+    ) AS randomly_sold_seats
+);
 
 CALL append_mock_seat_unit(301, '至尊包廂1', 100000, 'available');
 CALL append_mock_seat_unit(301, '至尊包廂2', 100000, 'available');
@@ -355,7 +377,6 @@ CALL append_mock_seats(302, '二樓座席2', 9000, 9, 'sold');
 INSERT INTO Orders
     (order_id, user_id, show_id, promo_id, total_price, status, payment_method, delivery_method, created_at)
 VALUES
-    (1, 2, 102, 1, 8500, 'paid', 'credit_card', 'ibon', DATE_SUB(NOW(), INTERVAL 2 DAY)),
     (2, 2, 301, NULL, 72000, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),
     (3, 2, 302, 2, 71500, 'pending_payment', NULL, NULL, DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
     (4, 2, 301, NULL, 100000, 'cancelled', NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 DAY));
@@ -363,18 +384,6 @@ VALUES
 INSERT INTO Ticket
     (order_id, seat_id, real_name, id_number)
 VALUES
-    (
-        1,
-        (SELECT seat_id FROM Seat WHERE show_id = 102 AND seat_number = '幸福搖滾區1_1號' LIMIT 1),
-        '李瑋晨',
-        'A130022039'
-    ),
-    (
-        1,
-        (SELECT seat_id FROM Seat WHERE show_id = 102 AND seat_number = '幸福孟區1_1號' LIMIT 1),
-        '王小明',
-        'B123456789'
-    ),
     (
         2,
         (SELECT seat_id FROM Seat WHERE show_id = 301 AND seat_number = '搖滾站區1_13號' LIMIT 1),
@@ -405,12 +414,6 @@ VALUES
         '取消測試',
         'E423456789'
     );
-
-UPDATE Seat
-SET status = 'sold'
-WHERE seat_id IN (
-    SELECT seat_id FROM Ticket WHERE order_id = 1
-);
 
 UPDATE Seat
 SET status = 'reserved'
@@ -445,6 +448,102 @@ WHERE ticket.order_id = 4;
 -- available seat is purchased again.
 DELETE FROM Ticket
 WHERE order_id = 4;
+
+-- Create paid orders for every sold seat in shows 101 and 102. Each generated
+-- customer owns one order per show, and each order contains at most two seats.
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS seed_paid_orders_for_show $$
+
+CREATE PROCEDURE seed_paid_orders_for_show(IN p_show_id INT)
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE current_seat_id INT;
+    DECLARE current_price DECIMAL(10, 2);
+    DECLARE current_order_id INT DEFAULT NULL;
+    DECLARE generated_user_id INT DEFAULT NULL;
+    DECLARE order_index INT DEFAULT 0;
+    DECLARE ticket_index INT DEFAULT 0;
+
+    DECLARE sold_seats CURSOR FOR
+        SELECT seat_id, price
+        FROM Seat
+        WHERE show_id = p_show_id
+          AND status = 'sold'
+        ORDER BY seat_id;
+
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    OPEN sold_seats;
+
+    seat_loop: LOOP
+        FETCH sold_seats INTO current_seat_id, current_price;
+
+        IF done = 1 THEN
+            LEAVE seat_loop;
+        END IF;
+
+        IF MOD(ticket_index, 2) = 0 THEN
+            SET order_index = order_index + 1;
+
+            INSERT INTO `User`
+                (username, real_name, birth_date, phone_num, id_number, email, user_address, password, role)
+            VALUES
+                (
+                    CONCAT('seed_customer_', p_show_id, '_', order_index),
+                    CONCAT('測試購票會員 ', p_show_id, '-', order_index),
+                    '2000-01-01 00:00:00',
+                    CONCAT('09', LPAD(MOD(p_show_id * 1000 + order_index, 100000000), 8, '0')),
+                    CONCAT('S', p_show_id, LPAD(order_index, 6, '0')),
+                    CONCAT('seed_', p_show_id, '_', order_index, '@example.com'),
+                    'Taiwan',
+                    '12345678',
+                    'customer'
+                );
+
+            SET generated_user_id = LAST_INSERT_ID();
+
+            INSERT INTO Orders
+                (user_id, show_id, promo_id, total_price, status, payment_method, delivery_method, created_at)
+            VALUES
+                (
+                    generated_user_id,
+                    p_show_id,
+                    NULL,
+                    0,
+                    'paid',
+                    'credit_card',
+                    'ibon',
+                    DATE_SUB(NOW(), INTERVAL order_index MINUTE)
+                );
+
+            SET current_order_id = LAST_INSERT_ID();
+        END IF;
+
+        INSERT INTO Ticket (order_id, seat_id, real_name, id_number)
+        VALUES (
+            current_order_id,
+            current_seat_id,
+            CONCAT('持票人 ', p_show_id, '-', ticket_index + 1),
+            CONCAT('T', p_show_id, LPAD(ticket_index + 1, 6, '0'))
+        );
+
+        UPDATE Orders
+        SET total_price = total_price + current_price
+        WHERE order_id = current_order_id;
+
+        SET ticket_index = ticket_index + 1;
+    END LOOP;
+
+    CLOSE sold_seats;
+END $$
+
+CALL seed_paid_orders_for_show(101) $$
+CALL seed_paid_orders_for_show(102) $$
+
+DROP PROCEDURE seed_paid_orders_for_show $$
+
+DELIMITER ;
 
 DROP PROCEDURE IF EXISTS append_mock_seats;
 DROP PROCEDURE IF EXISTS append_mock_seat_unit;
