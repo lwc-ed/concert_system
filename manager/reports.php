@@ -77,7 +77,7 @@ if (!$dbReady) {
                 show_date.status AS show_status,
                 concert.title AS concert_title,
                 COUNT(DISTINCT seat.seat_id) AS total_seats,
-                COUNT(DISTINCT CASE WHEN orders_table.status = 'paid' THEN ticket.ticket_id END) AS sold_tickets,
+                COUNT(DISTINCT CASE WHEN seat.status = 'sold' THEN seat.seat_id END) AS sold_tickets,
                 COALESCE(order_summary.paid_orders, 0) AS paid_orders,
                 COALESCE(order_summary.revenue, 0) AS revenue
              FROM ShowDate show_date
