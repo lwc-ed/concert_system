@@ -473,7 +473,46 @@ function getSeatMapLayout($concertId) {
         ],
     ];
 
-    return $layouts[(int) $concertId] ?? [];
+    $layout = $layouts[(int) $concertId] ?? [];
+    $layoutZones = array_unique(array_column($layout, 'zone'));
+    $seatZones = [];
+
+    foreach (getShowDatesByConcertId($concertId) as $showDate) {
+        foreach (getSeatsByShowId($showDate['show_id']) as $seat) {
+            $zone = seatZoneFromSeatNumber($seat['seat_number']);
+
+            if ($zone !== '' && !in_array($zone, $seatZones, true)) {
+                $seatZones[] = $zone;
+            }
+        }
+    }
+
+    natcasesort($seatZones);
+    $seatZones = array_values($seatZones);
+    $missingZones = array_values(array_diff($seatZones, $layoutZones));
+
+    if (count($missingZones) === 0) {
+        return $layout;
+    }
+
+    $lastRow = 0;
+
+    foreach ($layout as $layoutItem) {
+        $lastRow = max($lastRow, (int) $layoutItem['row']);
+    }
+
+    foreach ($missingZones as $zoneIndex => $zone) {
+        $position = $zoneIndex % 3;
+        $layout[] = [
+            'label' => $zone,
+            'zone' => $zone,
+            'row' => $lastRow + 1 + intdiv($zoneIndex, 3),
+            'col' => 1 + ($position * 2),
+            'colspan' => 2,
+        ];
+    }
+
+    return $layout;
 }
 
 function getSeatZoneSummariesByShowId($showId) {
